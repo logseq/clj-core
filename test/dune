@@ -1,0 +1,13 @@
+(tests
+ (names
+  test_vec
+  test_map
+  test_set
+  test_list
+  test_seq
+  test_queue
+  test_atom
+  test_keyword
+  test_str
+  test_core)
+ (libraries clj-core alcotest))
