@@ -28,4 +28,5 @@
   (dune
    (>= 3.23))
   rrbvec
+  melange
   (alcotest :with-test)))
