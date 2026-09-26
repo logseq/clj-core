@@ -82,7 +82,11 @@ let split s ~on =
   end
 
 let split_on_char = S.split_on_char
-let split_lines = S.split_on_char '\n'
+let split_lines s =
+  match S.split_on_char '\n' s with
+  | [] -> []
+  | xs -> Stdlib.List.map (fun l -> if S.length l > 0 && l.[S.length l - 1] = '\r' then S.sub l 0 (S.length l - 1) else l) xs
+
 let lines = split_lines
 
 let replace s ~from ~by = join ~sep:by (Stdlib.List.to_seq (split s ~on:from))

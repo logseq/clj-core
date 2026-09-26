@@ -68,6 +68,14 @@ let test_model () =
     Alcotest.(check bool) (Printf.sprintf "mem %d" x) (IS.mem x !m) (Set.mem x !s)
   done
 
+let test_coverage () =
+  Alcotest.(check int_list) "hash_set" [ 1; 2; 3 ] (Set.to_list (Set.hash_set [ 3; 1; 2; 1 ]));
+  Alcotest.(check int_list) "sorted_set" [ 1; 2; 3 ] (Set.to_list (Set.sorted_set [ 3; 1; 2 ]));
+  Alcotest.(check bool) "for_all" true (Set.for_all (fun x -> x > 0) s);
+  Alcotest.(check bool) "for_all no" false (Set.for_all (fun x -> x > 1) s);
+  Alcotest.(check bool) "exists" true (Set.exists (fun x -> x = 2) s);
+  Alcotest.(check bool) "exists miss" false (Set.exists (fun x -> x = 9) s)
+
 let () =
   Alcotest.run "Set"
     [
@@ -76,5 +84,6 @@ let () =
       ("algebra", [ Alcotest.test_case "ops" `Quick test_algebra ]);
       ("transforms", [ Alcotest.test_case "ops" `Quick test_transforms ]);
       ("iteration", [ Alcotest.test_case "ops" `Quick test_iteration ]);
+      ("coverage", [ Alcotest.test_case "ops" `Quick test_coverage ]);
       ("model", [ Alcotest.test_case "random vs Stdlib.Set" `Slow test_model ]);
     ]

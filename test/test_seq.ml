@@ -117,6 +117,16 @@ let test_conv () =
     (to_list (S.of_map (Map.of_list [ ("a", 1) ])));
   Alcotest.(check int_list) "of_queue" [ 1; 2 ] (to_list (S.of_queue (Queue.of_list [ 1; 2 ])))
 
+let test_coverage () =
+  Alcotest.(check int_list) "return" [ 42 ] (to_list (S.return 42));
+  Alcotest.(check int_list) "flat_map" [ 1; 1; 2; 2 ]
+    (to_list (S.flat_map (fun x -> S.of_list [ x; x ]) (S.of_list [ 1; 2 ])));
+  Alcotest.(check bool) "for_all" true (S.for_all (fun x -> x > 0) (S.of_list [ 1; 2; 3 ]));
+  Alcotest.(check bool) "for_all no" false (S.for_all (fun x -> x > 1) (S.of_list [ 1; 2; 3 ]));
+  Alcotest.(check bool) "exists" true (S.exists (fun x -> x = 2) (S.of_list [ 1; 2; 3 ]));
+  Alcotest.(check bool) "exists miss" false (S.exists (fun x -> x = 9) (S.of_list [ 1; 2; 3 ]));
+  Alcotest.(check int_list) "of_set" [ 1; 2; 3 ] (to_list (S.of_set (Set.of_list [ 3; 1; 2 ])))
+
 let () =
   Alcotest.run "Seq"
     [
@@ -127,4 +137,5 @@ let () =
       ("folds", [ Alcotest.test_case "ops" `Quick test_folds ]);
       ("partitions", [ Alcotest.test_case "ops" `Quick test_partitions ]);
       ("conv", [ Alcotest.test_case "ops" `Quick test_conv ]);
+      ("coverage", [ Alcotest.test_case "ops" `Quick test_coverage ]);
     ]

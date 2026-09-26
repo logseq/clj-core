@@ -127,6 +127,19 @@ let test_model () =
   let expected = Stdlib.List.filter (fun (k, _) -> k >= lo && k < hi) (model_to_list ()) in
   Alcotest.(check (list (pair int int))) "slice" expected (Map.to_list (Map.slice !m ~from_:lo ~to_:hi))
 
+let test_coverage () =
+  let am = Map.array_map [ ("x", 1); ("y", 2) ] in
+  Alcotest.(check (option int)) "array_map" (Some 2) (Map.get am "y");
+  Alcotest.(check (list (pair string int))) "array_map sorted" [ ("x", 1); ("y", 2) ] (Map.to_list am);
+  Alcotest.(check int) "fold_kv" 6 (Map.fold_kv (fun acc _ v -> acc + v) 0 m);
+  Alcotest.(check (list string)) "fold_kv keys" [ "c"; "b"; "a" ]
+    (Map.fold_kv (fun acc k _ -> k :: acc) [] m);
+  Alcotest.(check int) "reduce_kv" 6 (Map.reduce_kv (fun acc _ v -> acc + v) 0 m);
+  Alcotest.(check (list (pair string int))) "slice_seq" [ ("b", 2); ("c", 3) ]
+    (Stdlib.List.of_seq (Map.slice_seq m ~from_:"b"));
+  Alcotest.(check (list (pair string int))) "slice_seq to" [ ("a", 1) ]
+    (Stdlib.List.of_seq (Map.slice_seq m ~to_:"b"))
+
 let () =
   Alcotest.run "Map"
     [
@@ -138,5 +151,6 @@ let () =
       ("merge", [ Alcotest.test_case "ops" `Quick test_merge ]);
       ("iteration", [ Alcotest.test_case "ops" `Quick test_iteration ]);
       ("slice+equal", [ Alcotest.test_case "ops" `Quick test_slice_equal ]);
+      ("coverage", [ Alcotest.test_case "ops" `Quick test_coverage ]);
       ("model", [ Alcotest.test_case "random vs assoc list" `Slow test_model ]);
     ]

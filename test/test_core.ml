@@ -133,6 +133,29 @@ let test_errors () =
     (Option.bind (Core.ex_data e) (fun m -> Map.get m "reason"));
   Alcotest.(check bool) "ex_data plain none" true (Core.ex_data (Failure "x") = None)
 
+let test_coverage () =
+  Alcotest.(check (option int)) "ffirst" (Some 1)
+    (Core.ffirst (`Lst [ Seq.of_list [ 1; 2 ]; Seq.of_list [ 3 ] ]));
+  Alcotest.(check (option int)) "ffirst empty" None (Core.ffirst (`Lst []));
+  Alcotest.(check int_list) "flat_map" [ 1; 1; 2; 2 ]
+    (to_list (Core.flat_map (fun x -> `Lst [ x; x ]) (`Lst [ 1; 2 ])));
+  let f = Core.comp3 (fun x -> x * 10) (fun x -> x + 1) (fun x -> x * 2) in
+  Alcotest.(check int) "comp3" 50 (f 2);
+  Alcotest.(check bool) "is_none" true (Core.is_none None);
+  Alcotest.(check bool) "is_none no" false (Core.is_none (Some 1));
+  let rng = Random.State.make [| 42 |] in
+  let r = Core.rand ~rng () in
+  Alcotest.(check bool) "rand bounds" true (r >= 0. && r < 1.);
+  let ri = Core.rand_int ~rng 10 in
+  Alcotest.(check bool) "rand_int bounds" true (ri >= 0 && ri < 10);
+  Alcotest.(check bool) "rand_nth" true
+    (Core.rand_nth ~rng (`Lst [ 1; 2; 3 ]) |> fun x -> x >= 1 && x <= 3);
+  Alcotest.(check int) "max2" 2 (Core.max2 1 2);
+  Core.print "clj-core test";
+  Core.println "";
+  Core.prn "";
+  Alcotest.(check bool) "print fns run" true true
+
 let () =
   Alcotest.run "Core"
     [
@@ -143,4 +166,5 @@ let () =
       ("numbers", [ Alcotest.test_case "ops" `Quick test_numbers ]);
       ("strings+refs", [ Alcotest.test_case "ops" `Quick test_strings_refs ]);
       ("errors", [ Alcotest.test_case "ops" `Quick test_errors ]);
+      ("coverage", [ Alcotest.test_case "ops" `Quick test_coverage ]);
     ]

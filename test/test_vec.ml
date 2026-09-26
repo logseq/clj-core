@@ -156,6 +156,35 @@ let test_model () =
   done;
   Alcotest.(check int_list) "model matches array" (Array.to_list !a) (Vec.to_list !v)
 
+let test_coverage () =
+  Alcotest.(check (option int)) "peek_front" (Some 1) (Vec.peek_front v);
+  Alcotest.(check (option int)) "peek_back" (Some 5) (Vec.peek_back v);
+  Alcotest.(check (option int)) "peek_front empty" None (Vec.peek_front Vec.empty);
+  Alcotest.(check (option int)) "peek_back empty" None (Vec.peek_back Vec.empty);
+  Alcotest.(check int_list) "push_back" [ 1; 2; 3; 9 ]
+    (Vec.to_list (Vec.push_back (Vec.of_list [ 1; 2; 3 ]) 9));
+  Alcotest.(check int_list) "push_front" [ 9; 1; 2 ]
+    (Vec.to_list (Vec.push_front (Vec.of_list [ 1; 2 ]) 9));
+  let seen = ref [] in
+  Vec.iteri (fun i x -> seen := (i, x) :: !seen) v;
+  Alcotest.(check (list (pair int int))) "iteri" [ (4, 5); (3, 4); (2, 3); (1, 2); (0, 1) ] !seen;
+  let pairs = ref [] in
+  Vec.iter2 (fun a b -> pairs := (a, b) :: !pairs) v (Vec.of_list [ 10; 20; 30; 40; 50 ]);
+  Alcotest.(check (list (pair int int))) "iter2"
+    [ (5, 50); (4, 40); (3, 30); (2, 20); (1, 10) ] !pairs;
+  Alcotest.(check int) "foldi" 25 (Vec.foldi (fun acc i x -> acc + i + x) 0 v);
+  Alcotest.(check int) "reduce_kv" 40 (Vec.reduce_kv (fun acc i x -> acc + (i * x)) 0 v);
+  Alcotest.(check bool) "exists" true (Vec.exists (fun x -> x = 3) v);
+  Alcotest.(check bool) "exists miss" false (Vec.exists (fun x -> x = 9) v);
+  Alcotest.(check bool) "for_all" true (Vec.for_all (fun x -> x > 0) v);
+  Alcotest.(check bool) "for_all no" false (Vec.for_all (fun x -> x > 3) v);
+  Alcotest.(check int_list) "mapv" [ 2; 4; 6; 8; 10 ] (Vec.to_list (Vec.mapv (fun x -> x * 2) v));
+  Alcotest.(check int_list) "filterv" [ 2; 4 ] (Vec.to_list (Vec.filterv (fun x -> x mod 2 = 0) v));
+  Alcotest.(check int_list) "flat_map" [ 1; 1; 2; 2 ]
+    (Vec.to_list (Vec.flat_map (fun x -> Vec.of_list [ x; x ]) (Vec.of_list [ 1; 2 ])));
+  Alcotest.(check int_list) "sort_uniq" [ 1; 2; 3 ]
+    (Vec.to_list (Vec.sort_uniq (Vec.of_list [ 3; 1; 2; 1; 3 ])))
+
 let () =
   Alcotest.run "Vec"
     [
@@ -167,5 +196,6 @@ let () =
       ("partition", [ Alcotest.test_case "ops" `Quick test_partitions_concat ]);
       ("seqs", [ Alcotest.test_case "ops" `Quick test_seqs ]);
       ("generators", [ Alcotest.test_case "ops" `Quick test_generators ]);
+      ("coverage", [ Alcotest.test_case "ops" `Quick test_coverage ]);
       ("model", [ Alcotest.test_case "random vs array" `Slow test_model ]);
     ]
