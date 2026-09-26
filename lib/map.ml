@@ -154,7 +154,7 @@ let count_matching f m = Vec.count (Vec.filter (fun (k, v) -> f k v) m.entries)
 let slice_bounds m from_ to_ =
   let lo = match from_ with None -> 0 | Some k -> lower_bound m k in
   let hi = match to_ with None -> count m | Some k -> lower_bound m k in
-  (lo, hi)
+  (lo, max lo hi)
 
 let slice ?from_ ?to_ m =
   let lo, hi = slice_bounds m from_ to_ in

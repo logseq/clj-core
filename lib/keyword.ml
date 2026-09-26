@@ -23,9 +23,10 @@ let to_symbol_string k =
 
 let to_string k = ":" ^ to_symbol_string k
 let equal a b = a.ns = b.ns && a.name = b.name
+(* Clojure sorts by ns first, then name; an ns-less symbol sorts first. *)
 let compare a b =
-  match Stdlib.compare a.name b.name with
-  | 0 -> Stdlib.compare a.ns b.ns
+  match Stdlib.compare a.ns b.ns with
+  | 0 -> Stdlib.compare a.name b.name
   | c -> c
 
 let hash k = Hashtbl.hash (k.ns, k.name)

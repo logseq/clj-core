@@ -138,7 +138,9 @@ let test_coverage () =
   Alcotest.(check (list (pair string int))) "slice_seq" [ ("b", 2); ("c", 3) ]
     (Stdlib.List.of_seq (Map.slice_seq m ~from_:"b"));
   Alcotest.(check (list (pair string int))) "slice_seq to" [ ("a", 1) ]
-    (Stdlib.List.of_seq (Map.slice_seq m ~to_:"b"))
+    (Stdlib.List.of_seq (Map.slice_seq m ~to_:"b"));
+  Alcotest.(check (list (pair string int))) "slice inverted" []
+    (Map.to_list (Map.slice m ~from_:"c" ~to_:"a"))
 
 let () =
   Alcotest.run "Map"

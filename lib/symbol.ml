@@ -19,9 +19,10 @@ let to_string s =
 
 let equal a b = a.ns = b.ns && a.name = b.name
 
+(* Clojure sorts by ns first, then name; an ns-less symbol sorts first. *)
 let compare a b =
-  match Stdlib.compare a.name b.name with
-  | 0 -> Stdlib.compare a.ns b.ns
+  match Stdlib.compare a.ns b.ns with
+  | 0 -> Stdlib.compare a.name b.name
   | c -> c
 
 let hash s = Hashtbl.hash (s.ns, s.name)

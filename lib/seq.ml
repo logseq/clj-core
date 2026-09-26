@@ -38,9 +38,23 @@ let repeatedly ?n f =
     let rec go n () = if n <= 0 then Nil else Cons (f (), go (n - 1)) in
     go n
 
+(* Elements are realized once into [buf] (like Clojure's realized chunk), then
+   replayed forever — re-running effectful seqs is avoided. *)
 let cycle s =
-  let rec go () = Stdlib.Seq.append s (lazy_seq (fun () -> go)) () in
-  go
+  match uncons s with
+  | None -> empty
+  | Some (x, xs) ->
+    let buf = ref (Vec.singleton x) in
+    let rec first_pass s () =
+      match uncons s with
+      | Some (x, xs) ->
+        buf := Vec.conj !buf x;
+        Cons (x, first_pass xs)
+      | None -> replay !buf 0 ()
+    and replay v i () =
+      if i >= Vec.count v then replay v 0 () else Cons (Vec.nth v i, replay v (i + 1))
+    in
+    cons x (first_pass xs)
 
 let range ?(start = 0) ?(step = 1) stop =
   if step = 0 then invalid_arg "Clj_core.Seq.range: step must not be 0";
@@ -314,18 +328,20 @@ let shuffle ?(rng = Stdlib.Random.State.make_self_init ()) s =
 let min_key ?(cmp = Stdlib.compare) f s =
   Stdlib.Seq.fold_left
     (fun best x ->
+      let fx = f x in
       match best with
-      | Some (_, bk) when cmp (f x) bk >= 0 -> best
-      | _ -> Some (x, f x))
+      | Some (_, bk) when cmp fx bk >= 0 -> best
+      | _ -> Some (x, fx))
     None s
   |> Option.map fst
 
 let max_key ?(cmp = Stdlib.compare) f s =
   Stdlib.Seq.fold_left
     (fun best x ->
+      let fx = f x in
       match best with
-      | Some (_, bk) when cmp (f x) bk <= 0 -> best
-      | _ -> Some (x, f x))
+      | Some (_, bk) when cmp fx bk <= 0 -> best
+      | _ -> Some (x, fx))
     None s
   |> Option.map fst
 
