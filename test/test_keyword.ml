@@ -15,7 +15,12 @@ let test_keyword () =
   Alcotest.(check string) "constructor" ":my.ns/x" (Keyword.to_string k3);
   Alcotest.(check bool) "equal" true (Keyword.equal k (Keyword.of_string "foo/bar"));
   Alcotest.(check bool) "not equal" false (Keyword.equal k k2);
-  Alcotest.(check int) "hash" (Keyword.hash k) (Keyword.hash (Keyword.of_string ":foo/bar"))
+  Alcotest.(check int) "hash" (Keyword.hash k) (Keyword.hash (Keyword.of_string ":foo/bar"));
+  (* Clojure sorts ns-less first, then by ns, then name *)
+  let lt a b = Keyword.compare (Keyword.of_string a) (Keyword.of_string b) < 0 in
+  Alcotest.(check bool) "ns-less first" true (lt ":a" ":a/b");
+  Alcotest.(check bool) "ns then name" true (lt ":a/x" ":b/a");
+  Alcotest.(check bool) "by name" true (lt ":a" ":b")
 
 let test_keyword_as_key () =
   let m =

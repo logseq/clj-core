@@ -15,6 +15,12 @@ let test_gen () =
   Alcotest.(check int_list) "repeat" [ 9; 9 ] (to_list (S.take 2 (S.repeat 9)));
   Alcotest.(check int_list) "repeatedly" [ 1; 1 ] (to_list (S.repeatedly ~n:2 (fun () -> 1)));
   Alcotest.(check int_list) "cycle" [ 1; 2; 1; 2; 1 ] (to_list (S.take 5 (S.cycle (S.of_list [ 1; 2 ]))));
+  Alcotest.(check bool) "cycle empty" true (S.is_empty (S.cycle S.empty));
+  let calls = ref 0 in
+  let effectful () = incr calls; Stdlib.List.to_seq [ 1; 2 ] in
+  Alcotest.(check int_list) "cycle memoizes" [ 1; 2; 1; 2 ]
+    (to_list (S.take 4 (S.cycle (S.lazy_seq effectful))));
+  Alcotest.(check int) "cycle ran seq once" 1 !calls;
   Alcotest.(check int_list) "range" [ 0; 2; 4 ] (to_list (S.range ~step:2 6));
   Alcotest.(check int_list) "range default" [ 0; 1; 2 ] (to_list (S.range 3));
   Alcotest.(check int_list) "ints" [ 5; 6; 7 ] (to_list (S.take 3 (S.ints ~start:5 ())));
