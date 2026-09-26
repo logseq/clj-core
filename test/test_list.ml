@@ -88,6 +88,15 @@ let test_conv () =
   Alcotest.(check bool) "equal" true (L.equal l [ 1; 2; 3; 4; 5 ]);
   Alcotest.(check bool) "equal no" false (L.equal l [ 1; 2; 3 ])
 
+let test_coverage () =
+  Alcotest.(check int_list) "flat_map" [ 1; 1; 2; 2 ] (L.flat_map (fun x -> [ x; x ]) [ 1; 2 ]);
+  Alcotest.(check int_list) "flatten" [ 1; 2; 3; 4 ] (L.flatten [ [ 1; 2 ]; []; [ 3; 4 ] ]);
+  let seen = ref [] in
+  L.iteri (fun i x -> seen := (i, x) :: !seen) [ 10; 20 ];
+  Alcotest.(check (list (pair int int))) "iteri" [ (1, 20); (0, 10) ] !seen;
+  Alcotest.(check bool) "for_all" true (L.for_all (fun x -> x > 0) l);
+  Alcotest.(check bool) "for_all no" false (L.for_all (fun x -> x > 3) l)
+
 let () =
   Alcotest.run "List"
     [
@@ -97,4 +106,5 @@ let () =
       ("slices", [ Alcotest.test_case "ops" `Quick test_slices ]);
       ("partitions", [ Alcotest.test_case "ops" `Quick test_partitions ]);
       ("conv", [ Alcotest.test_case "ops" `Quick test_conv ]);
+      ("coverage", [ Alcotest.test_case "ops" `Quick test_coverage ]);
     ]

@@ -40,6 +40,8 @@ let test_split_find () =
   Alcotest.(check (list string)) "split multi" [ "a"; "b" ] (S.split "a--b" ~on:"--");
   Alcotest.(check (list string)) "split edge" [ ""; "a"; "" ] (S.split ",a," ~on:",");
   Alcotest.(check (list string)) "split_lines" [ "a"; "b" ] (S.split_lines "a\nb");
+  Alcotest.(check (list string)) "lines" [ "a"; "b" ] (S.lines "a\nb");
+  Alcotest.(check (list string)) "lines crlf" [ "a"; "b" ] (S.lines "a\r\nb");
   Alcotest.(check (list string)) "split_on_char" [ "a"; "b" ] (S.split_on_char ',' "a,b");
   Alcotest.(check (option int)) "index_of" (Some 3) (S.index_of "foobar" "bar");
   Alcotest.(check (option int)) "index_of from" (Some 3) (S.index_of "ababa" ~from:2 "ba");
