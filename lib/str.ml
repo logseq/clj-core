@@ -35,6 +35,12 @@ let trimr s =
 let lower_case = S.lowercase_ascii
 let upper_case = S.uppercase_ascii
 
+let trim_newline s =
+  let rec go i =
+    if i >= 0 && (s.[i] = '\n' || s.[i] = '\r') then go (i - 1) else i
+  in
+  S.sub s 0 (go (S.length s - 1) + 1)
+
 let capitalize s =
   if s = "" then s
   else S.uppercase_ascii (S.sub s 0 1) ^ S.lowercase_ascii (S.sub s 1 (S.length s - 1))

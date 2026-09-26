@@ -133,6 +133,44 @@ let test_coverage () =
   Alcotest.(check bool) "exists miss" false (S.exists (fun x -> x = 9) (S.of_list [ 1; 2; 3 ]));
   Alcotest.(check int_list) "of_set" [ 1; 2; 3 ] (to_list (S.of_set (Set.of_list [ 3; 1; 2 ])))
 
+
+let test_new_seq_ops () =
+  let s = S.of_list [ 1; 2; 3; 4 ] in
+  let acc = ref [] in
+  S.run_ (fun x -> acc := x :: !acc) s;
+  Alcotest.(check int_list) "run_" [ 4; 3; 2; 1 ] !acc;
+  Alcotest.(check bool) "not_empty" true (S.not_empty s <> None);
+  Alcotest.(check bool) "not_empty empty" true (S.not_empty S.empty = None);
+  Alcotest.(check bool) "sequence identity" true
+    (S.to_list (S.sequence s) = [ 1; 2; 3; 4 ]);
+  Alcotest.(check int) "bounded_count" 3 (S.bounded_count 3 s);
+  Alcotest.(check int) "bounded_count over" 4 (S.bounded_count 10 s);
+  Alcotest.(check int) "bounded_count infinite" 5
+    (S.bounded_count 5 (S.ints ()));
+  Alcotest.(check (option int)) "nth_next first" (Some 3)
+    (Option.bind (S.nth_next s 1) S.first);
+  Alcotest.(check (option int)) "fnext" (Some 2) (S.fnext s);
+  Alcotest.(check int_list) "nfirst" [ 2 ]
+    (match S.nfirst (S.of_list [ S.of_list [ 1; 2 ]; S.of_list [ 3 ] ]) with
+     | Some s' -> S.to_list s'
+     | None -> []);
+  Alcotest.(check (option int)) "nnext" (Some 3)
+    (Option.bind (S.nnext s) S.first);
+  Alcotest.(check bool) "distinct_" true (S.distinct_ s);
+  Alcotest.(check bool) "distinct_ dup" false (S.distinct_ (S.of_list [ 1; 2; 1 ]));
+  Alcotest.(check int_list) "replicate" [ 7; 7; 7 ] (S.to_list (S.replicate 3 7));
+  Alcotest.(check int_list) "some_vals" [ 1; 3 ]
+    (S.to_list (S.some_vals (S.of_list [ Some 1; None; Some 3 ])));
+  let rng = Stdlib.Random.State.make [| 42 |] in
+  Alcotest.(check int_list) "random_sample 1.0" [ 1; 2; 3; 4 ]
+    (S.to_list (S.random_sample ~prob:1.0 ~rng s));
+  Alcotest.(check int_list) "random_sample 0.0" []
+    (S.to_list (S.random_sample ~prob:0.0 ~rng s));
+  Alcotest.(check bool) "ensure_reduced" true
+    (Reduced.reduced_ (Reduced.ensure_reduced (Reduced.continue 1)));
+  Alcotest.(check bool) "ensure_reduced already" true
+    (Reduced.reduced_ (Reduced.ensure_reduced (Reduced.reduced 1)))
+
 let () =
   Alcotest.run "Seq"
     [
@@ -144,4 +182,5 @@ let () =
       ("partitions", [ Alcotest.test_case "ops" `Quick test_partitions ]);
       ("conv", [ Alcotest.test_case "ops" `Quick test_conv ]);
       ("coverage", [ Alcotest.test_case "ops" `Quick test_coverage ]);
+      ("new ops", [ Alcotest.test_case "ops" `Quick test_new_seq_ops ]);
     ]

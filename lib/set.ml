@@ -15,6 +15,7 @@ let of_seq ?cmp xs =
 let set ?cmp xs = of_list ?cmp xs
 let hash_set ?cmp xs = of_list ?cmp xs
 let sorted_set ?cmp xs = of_list ?cmp xs
+let sorted_set_by cmp xs = of_list ~cmp xs
 
 let cmp = Map.cmp
 let count = Map.count
@@ -53,6 +54,9 @@ let first = min_elt
 let last = max_elt
 
 let slice ?from_ ?to_ s = Map.slice ?from_ ?to_ s
+let subseq ?from_ ?to_ s = Map.keys (Map.slice ?from_ ?to_ s)
+let rsubseq ?from_ ?to_ s =
+  Stdlib.Seq.map fst (Map.rseq (Map.slice ?from_ ?to_ s))
 
 let iter f s = Map.iter (fun k () -> f k) s
 let fold f acc s = Map.fold (fun acc k () -> f acc k) acc s

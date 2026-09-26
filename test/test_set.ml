@@ -50,6 +50,20 @@ let test_iteration () =
 (* model test vs Stdlib.Set.Make *)
 module IS = Stdlib.Set.Make (Int)
 
+
+let test_sorted_views () =
+  let desc a b = Stdlib.compare b a in
+  let s = Set.sorted_set_by desc [ 1; 3; 2 ] in
+  Alcotest.(check (list int)) "sorted_set_by" [ 3; 2; 1 ]
+    (Set.to_list s);
+  let s = Set.of_list [ 1; 2; 3; 4 ] in
+  Alcotest.(check (list int)) "subseq" [ 2; 3 ]
+    (Stdlib.List.of_seq (Set.subseq ~from_:2 ~to_:4 s));
+  Alcotest.(check (list int)) "rsubseq" [ 3; 2 ]
+    (Stdlib.List.of_seq (Set.rsubseq ~from_:2 ~to_:4 s));
+  Alcotest.(check (list int)) "subseq open" [ 3; 4 ]
+    (Stdlib.List.of_seq (Set.subseq ~from_:3 s))
+
 let test_model () =
   let rng = Random.State.make [| 13 |] in
   let s = ref (Set.empty ()) and m = ref IS.empty in
@@ -85,5 +99,6 @@ let () =
       ("transforms", [ Alcotest.test_case "ops" `Quick test_transforms ]);
       ("iteration", [ Alcotest.test_case "ops" `Quick test_iteration ]);
       ("coverage", [ Alcotest.test_case "ops" `Quick test_coverage ]);
+      ("sorted views", [ Alcotest.test_case "ops" `Quick test_sorted_views ]);
       ("model", [ Alcotest.test_case "random vs Stdlib.Set" `Slow test_model ]);
     ]

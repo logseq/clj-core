@@ -30,6 +30,9 @@ val hash_set : ?cmp:('a -> 'a -> int) -> 'a list -> 'a t
 val sorted_set : ?cmp:('a -> 'a -> int) -> 'a list -> 'a t
 (** [set]/[hash_set]/[sorted_set] are [of_list] under the Clojure names. *)
 
+val sorted_set_by : ('a -> 'a -> int) -> 'a list -> 'a t
+(** [sorted_set_by cmp xs] is [of_list ~cmp] — Clojure's [sorted-set-by]. *)
+
 val cmp : 'a t -> 'a -> 'a -> int
 (** The comparator a set was built with. *)
 
@@ -100,6 +103,13 @@ val map : ?cmp:('b -> 'b -> int) -> ('a -> 'b) -> 'a t -> 'b t
 
 val slice : ?from_:'a -> ?to_:'a -> 'a t -> 'a t
 (** [slice ?from_ ?to_ s] keeps elements with [from_ <= x < to_]. *)
+
+val subseq : ?from_:'a -> ?to_:'a -> 'a t -> 'a Stdlib.Seq.t
+(** [subseq ?from_ ?to_ s] is {!slice} as a sequence — Clojure's [subseq]
+    range view. *)
+
+val rsubseq : ?from_:'a -> ?to_:'a -> 'a t -> 'a Stdlib.Seq.t
+(** Like {!subseq} but iterating descending — Clojure's [rsubseq]. *)
 
 (** {1 Extremes} *)
 

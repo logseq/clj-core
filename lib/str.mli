@@ -30,6 +30,10 @@ val lower_case : string -> string
 
 val upper_case : string -> string
 (** [upper_case s] uppercases (ASCII) — clojure.string/upper-case. *)
+
+val trim_newline : string -> string
+(** [trim_newline s] removes trailing [\n] and [\r] characters —
+    clojure.string/trim-newline. *)
 val capitalize : string -> string
 (** [capitalize s] lowers all but the first character — Clojure's
     [capitalize]. *)

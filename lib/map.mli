@@ -31,10 +31,19 @@ val of_seq : ?cmp:'k comparator -> ('k * 'v) Stdlib.Seq.t -> ('k, 'v) t
 (** Like {!of_list} from a sequence. *)
 
 val sorted_map : ?cmp:'k comparator -> ('k * 'v) list -> ('k, 'v) t
+val sorted_map_by : 'k comparator -> ('k * 'v) list -> ('k, 'v) t
+(** [sorted_map_by cmp pairs] is [of_list ~cmp] — Clojure's [sorted-map-by]. *)
+
 val hash_map : ?cmp:'k comparator -> ('k * 'v) list -> ('k, 'v) t
 val array_map : ?cmp:'k comparator -> ('k * 'v) list -> ('k, 'v) t
 (** [sorted_map]/[hash_map]/[array_map] are constructors for [of_list] matching
     the Clojure names. Iteration is always sorted. *)
+
+val key : 'k * 'v -> 'k
+(** [key (k, v)] is [fst] — Clojure's [(key entry)]. *)
+
+val value : 'k * 'v -> 'v
+(** [value (k, v)] is [snd] — Clojure's [(val entry)]. *)
 
 val zipmap : ?cmp:'k comparator -> 'k list -> 'v list -> ('k, 'v) t
 (** [zipmap ks vs] pairs keys with values positionally, stopping at the
@@ -179,6 +188,12 @@ val slice : ?from_:'k -> ?to_:'k -> ('k, 'v) t -> ('k, 'v) t
 val slice_seq : ?from_:'k -> ?to_:'k -> ('k, 'v) t -> ('k * 'v) Stdlib.Seq.t
 (** Like {!slice} but returns a sequence. *)
 
+val subseq : ?from_:'k -> ?to_:'k -> ('k, 'v) t -> ('k * 'v) Stdlib.Seq.t
+(** Alias for {!slice_seq} — Clojure's [subseq] range view. *)
+
+val rsubseq : ?from_:'k -> ?to_:'k -> ('k, 'v) t -> ('k * 'v) Stdlib.Seq.t
+(** Like {!subseq} but iterating descending — Clojure's [rsubseq]. *)
+
 (** {1 Conversions} *)
 
 val seq : ('k, 'v) t -> ('k * 'v) Stdlib.Seq.t
@@ -195,6 +210,33 @@ val to_list : ('k, 'v) t -> ('k * 'v) list
 val to_vec : ('k, 'v) t -> ('k * 'v) Vec.t
 (** [to_vec m] is the sorted entries as a vector — structural sharing with
     the map's storage. *)
+
+(** {1 Nested maps} *)
+
+type ('k, 'v) nest = Leaf of 'v | Nest of ('k, ('k, 'v) nest) t
+(** A nested-map tree: each map level's values are either a [Leaf] leaf value
+    or a [Nest] deeper map. This is the OCaml encoding of Clojure's
+    dynamically-typed nested maps for [get-in]/[assoc-in]/[update-in]. *)
+
+val get_in : ('k, ('k, 'v) nest) t -> 'k list -> ('k, 'v) nest option
+(** [get_in m ks] walks nested [Nest] values along the key path — Clojure's
+    [get-in]. [get_in m []] is [Some (Nest m)]. A [Leaf] at a non-terminal
+    position yields [None]. *)
+
+val assoc_in : ('k, ('k, 'v) nest) t -> 'k list -> ('k, 'v) nest -> ('k, ('k, 'v) nest) t
+(** [assoc_in m ks v] sets the value at the key path, creating intermediate
+    maps — Clojure's [assoc-in]. A non-map value on the path is replaced.
+    Raises [Invalid_argument] on an empty path (Clojure assoc's [nil] there —
+    not reproducible with typed keys). *)
+
+val update_in :
+  ('k, ('k, 'v) nest) t ->
+  'k list ->
+  (('k, 'v) nest option -> ('k, 'v) nest) ->
+  ('k, ('k, 'v) nest) t
+(** [update_in m ks f] applies [f] to the value at the key path ([None] when
+    absent), creating intermediate maps — Clojure's [update-in]. Raises
+    [Invalid_argument] on an empty path. *)
 
 (** {1 Equality and comparison} *)
 

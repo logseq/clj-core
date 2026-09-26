@@ -106,8 +106,11 @@ let of_seq ?(cmp = Stdlib.compare) pairs =
     (empty ~cmp ()) pairs
 
 let sorted_map ?cmp pairs = of_list ?cmp pairs
+let sorted_map_by cmp pairs = of_list ~cmp pairs
 let hash_map ?cmp pairs = of_list ?cmp pairs
 let array_map ?cmp pairs = of_list ?cmp pairs
+let key = fst
+let value = snd
 
 let zipmap ?(cmp = Stdlib.compare) ks vs =
   let rec go m ks vs =
@@ -163,6 +166,42 @@ let slice ?from_ ?to_ m =
 let slice_seq ?from_ ?to_ m =
   let lo, hi = slice_bounds m from_ to_ in
   Vec.to_seq (Vec.subvec_exn m.entries lo hi)
+
+let subseq ?from_ ?to_ m = slice_seq ?from_ ?to_ m
+let rsubseq ?from_ ?to_ m = Vec.rseq (to_vec (slice ?from_ ?to_ m))
+
+type ('k, 'v) nest = Leaf of 'v | Nest of ('k, ('k, 'v) nest) t
+
+let rec get_in m ks =
+  match ks with
+  | [] -> Some (Nest m)
+  | [ k ] -> get m k
+  | k :: ks' -> (
+      match get m k with Some (Nest m') -> get_in m' ks' | _ -> None)
+
+let rec assoc_in m ks v =
+  match ks with
+  | [] -> invalid_arg "Clj_core.Map.assoc_in: empty path"
+  | [ k ] -> assoc m k v
+  | k :: ks' ->
+    let child =
+      match get m k with
+      | Some (Nest m') -> m'
+      | _ -> empty ~cmp:m.cmp ()
+    in
+    assoc m k (Nest (assoc_in child ks' v))
+
+let rec update_in m ks f =
+  match ks with
+  | [] -> invalid_arg "Clj_core.Map.update_in: empty path"
+  | [ k ] -> update m k f
+  | k :: ks' ->
+    let child =
+      match get m k with
+      | Some (Nest m') -> m'
+      | _ -> empty ~cmp:m.cmp ()
+    in
+    assoc m k (Nest (update_in child ks' f))
 
 let equal ?(eq = ( = )) a b =
   let n = count a in
