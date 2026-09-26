@@ -4,6 +4,7 @@
     5 domains (and on Melange there is only ever one thread anyway). *)
 
 type 'a t
+(** A mutable reference cell. *)
 
 val atom : 'a -> 'a t
 (** [atom v] creates a cell holding [v]. *)
