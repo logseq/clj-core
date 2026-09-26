@@ -40,14 +40,38 @@ val to_seq : 'a coll -> 'a Stdlib.Seq.t
 (** [to_seq c] iterates [c] in order (ascending for sets), returning a lazy
     sequence. *)
 
+val sequence : 'a coll -> 'a Stdlib.Seq.t
+(** Alias for {!to_seq} — Clojure's [sequence] (coll->seq arity only). *)
+
 val count : 'a coll -> int
 (** [count c] is the element count — Clojure's [(count c)]. *)
+
+val bounded_count : int -> 'a coll -> int
+(** [bounded_count n c] counts at most [n] elements — terminates on infinite
+    seqs. Clojure's [bounded-count]. *)
 
 val empty_ : 'a coll -> bool
 (** [empty_ c] is [true] when [c] has no elements — Clojure's [empty?]. *)
 
 val is_empty : 'a coll -> bool
 (** Alias for {!empty_}. *)
+
+val not_empty : 'a coll -> 'a coll option
+(** [not_empty c] is [Some c] or [None] on empty — Clojure's [not-empty]. *)
+
+val counted_ : 'a coll -> bool
+(** [counted_ c] is [true] when [c] knows its size without traversal —
+    everything except [`Seq]. Clojure's [counted?]. *)
+
+val indexed_ : 'a coll -> bool
+(** [indexed_ c] is [true] for [`Vec] and [`Arr] — Clojure's [indexed?]. *)
+
+val reversible_ : 'a coll -> bool
+(** [reversible_ c] is [true] when [c] supports reverse traversal —
+    Clojure's [reversible?]. *)
+
+val sorted_ : 'a coll -> bool
+(** [sorted_ c] is [true] for [`Set] — Clojure's [sorted?]. *)
 
 val first : 'a coll -> 'a option
 (** [first c] is the first element, [None] on empty — Clojure's [first]. *)
@@ -64,6 +88,20 @@ val next : 'a coll -> 'a Stdlib.Seq.t option
 
 val second : 'a coll -> 'a option
 (** [second c] is the second element — Clojure's [second]. *)
+
+val fnext : 'a coll -> 'a option
+(** [fnext c] is [first] of {!next} — Clojure's [fnext] (same as
+    {!second}). *)
+
+val nfirst : 'a Stdlib.Seq.t coll -> 'a Stdlib.Seq.t option
+(** [nfirst c] is [next] of the first element — Clojure's [nfirst] on a
+    coll of seqs. *)
+
+val nnext : 'a coll -> 'a Stdlib.Seq.t option
+(** [nnext c] is [next] of {!next} — Clojure's [nnext]. *)
+
+val nth_next : 'a coll -> int -> 'a Stdlib.Seq.t option
+(** [nth_next c n] is [next] of the nth [rest] — Clojure's [nthnext]. *)
 
 val last : 'a coll -> 'a option
 (** [last c] is the last element — Clojure's [last]; diverges on infinite
@@ -139,6 +177,13 @@ val distinct : 'a coll -> 'a Stdlib.Seq.t
 (** Keeps first occurrences — Clojure's [distinct]; holds a growing memo
     table while consumed. *)
 
+val distinct_ : 'a coll -> bool
+(** [distinct_ c] is [true] when all elements are distinct — Clojure's
+    [distinct?]; realizes [c]. *)
+
+val some_vals : 'a option coll -> 'a Stdlib.Seq.t
+(** [some_vals c] keeps the [Some] values — Clojure's [some-vals] — lazy. *)
+
 val partition_all : int -> 'a coll -> 'a Stdlib.Seq.t Stdlib.Seq.t
 (** [partition_all n c] groups into chunks of at most [n], keeping the
     trailing partial chunk — Clojure's [partition-all]. *)
@@ -165,6 +210,10 @@ val fold : ('acc -> 'a -> 'acc) -> 'acc -> 'a coll -> 'acc
 
 val iter : ('a -> unit) -> 'a coll -> unit
 (** [iter f c] applies [f] per element, for effects. *)
+
+val run_ : ('a -> 'b) -> 'a coll -> unit
+(** [run_ f c] applies [f] per element and discards the results — Clojure's
+    [run!]. *)
 
 val every_ : ('a -> bool) -> 'a coll -> bool
 (** [every_ p c] is [true] when every element satisfies [p] — Clojure's
@@ -215,6 +264,11 @@ val max_key : ('a -> 'b) -> 'a coll -> 'a option
 (** [min_key f c] is the element minimizing [f] — Clojure's [min-key];
     [max_key] maximizes. *)
 
+val random_sample :
+  ?prob:float -> ?rng:Stdlib.Random.State.t -> 'a coll -> 'a Stdlib.Seq.t
+(** [random_sample ?prob ?rng c] keeps each element with probability [prob]
+    (default [1.0]) — lazy, Clojure's [random-sample]. *)
+
 (** {1 Realization} *)
 
 val doall : 'a Stdlib.Seq.t -> 'a list
@@ -249,6 +303,9 @@ val repeat : ?n:int -> 'a -> 'a Stdlib.Seq.t
 
 val repeatedly : ?n:int -> (unit -> 'a) -> 'a Stdlib.Seq.t
 (** [repeatedly f] calls [f] each step — infinite unless [~n] bounds it. *)
+
+val replicate : int -> 'a -> 'a Stdlib.Seq.t
+(** [replicate n x] is [repeat ~n x] — Clojure's [replicate]. *)
 
 val cycle : 'a coll -> 'a Stdlib.Seq.t
 (** [cycle c] loops [c] forever — infinite, empty on empty; the first pass
@@ -294,6 +351,38 @@ val memoize : ('a -> 'b) -> 'a -> 'b
 (** [memoize f] caches [f] results by structural equality — Clojure's
     [memoize]. *)
 
+val partial : ('a -> 'b -> 'c) -> 'a -> 'b -> 'c
+(** [partial f a] is [f a] — partial application is native in OCaml; this
+    spelling mirrors Clojure's [(partial f a)]. [partial2]/[partial3]
+    capture two and three arguments. *)
+
+val partial2 : ('a -> 'b -> 'c -> 'd) -> 'a -> 'b -> 'c -> 'd
+val partial3 : ('a -> 'b -> 'c -> 'd -> 'e) -> 'a -> 'b -> 'c -> 'd -> 'e
+
+val every_pred : ('a -> bool) -> 'a -> bool
+val every_pred2 : ('a -> bool) -> ('a -> bool) -> 'a -> bool
+val every_pred3 : ('a -> bool) -> ('a -> bool) -> ('a -> bool) -> 'a -> bool
+(** [every_pred p] / [every_pred2 p q] / [every_pred3 p q r] return a
+    predicate that is [true] when all components hold — Clojure's
+    [every-pred]. *)
+
+val some_fn : ('a -> 'b option) -> 'a -> 'b option
+val some_fn2 : ('a -> 'b option) -> ('a -> 'b option) -> 'a -> 'b option
+val some_fn3 :
+  ('a -> 'b option) -> ('a -> 'b option) -> ('a -> 'b option) -> 'a -> 'b option
+(** [some_fn f] / [some_fn2 f g] / [some_fn3 f g h] return a function that
+    yields the first [Some _] produced — Clojure's [some-fn] specialized to
+    [option]-returning functions. *)
+
+type 'a bounce = Done of 'a | More of (unit -> 'a bounce)
+(** Trampoline step: a finished [Done] or a [More] thunk producing the next
+    step. *)
+
+val trampoline : 'a bounce -> 'a
+(** [trampoline b] runs a bounce chain without growing the stack —
+    Clojure's [trampoline]. Mutually recursive functions return [More
+    (fun () -> ...)] instead of calling each other. *)
+
 val if_ : bool -> (unit -> 'a) -> (unit -> 'a) -> 'a
 (** [if_ c then_ else_] calls the chosen thunk — lazy if/then/else. *)
 
@@ -308,6 +397,32 @@ val cond : (bool * (unit -> 'a)) list -> 'a option
 (** [cond clauses] evaluates the thunk of the first true clause — [None]
     when none match (Clojure returns nil). *)
 
+val cond_ : 'x -> (('x -> bool) * ('x -> 'a)) list -> 'a option
+(** [cond_ x clauses] applies [f x] of the first clause whose predicate
+    [p x] holds — a function-form [cond->]. *)
+
+val if_not : bool -> (unit -> 'a) -> (unit -> 'a) -> 'a
+(** [if_not c then_ else_] is {!if_} with the branches swapped — Clojure's
+    [if-not]. *)
+
+val when_not : bool -> (unit -> unit) -> unit
+(** [when_not c f] calls [f ()] when [c] is false — Clojure's [when-not]. *)
+
+val if_none : 'a option -> (unit -> 'b) -> ('a -> 'b) -> 'b
+(** [if_none opt then_ else_] dispatches on [None] vs [Some x] — the
+    function form of Clojure's [if-let]. *)
+
+val when_not_nil : 'a option -> ('a -> unit) -> unit
+(** [when_not_nil opt f] calls [f x] on [Some x] — Clojure's
+    [when-not-nil]. *)
+
+val while_ : (unit -> bool) -> (unit -> unit) -> unit
+(** [while_ p f] runs [f ()] while [p ()] holds — Clojure's [while]. *)
+
+val condp : ('e -> 'x -> bool) -> 'x -> ('e * ('x -> 'a)) list -> 'a option
+(** [condp p x clauses] applies [f x] of the first clause whose test
+    expression [e] satisfies [p e x] — Clojure's [condp] as a function. *)
+
 val or_else : 'a option -> 'a -> 'a
 (** [or_else opt default] — Clojure's [(or x default)]. *)
 
@@ -317,8 +432,50 @@ val nil_ : 'a option -> bool
 val some_ : 'a option -> bool
 (** [some_ opt] is [true] on [Some _] — Clojure's [some?]. *)
 
+val time : (unit -> 'a) -> 'a
+(** [time f] runs [f], prints ["Elapsed time: ... msecs"], and returns the
+    result — Clojure's [time]. *)
+
 val is_none : 'a option -> bool
 (** Alias for {!nil_}. *)
+
+(** {1 Comparison and logic} *)
+
+val eq : 'a -> 'a -> bool
+(** [eq a b] is structural equality — Clojure's [=]. *)
+
+val equal : 'a -> 'a -> bool
+(** Alias for {!eq}. *)
+
+val not_eq : 'a -> 'a -> bool
+(** [not_eq a b] is [not (eq a b)] — Clojure's [not=]. *)
+
+val identical_ : 'a -> 'a -> bool
+(** [identical_ a b] is physical equality — Clojure's [identical?]. *)
+
+val lt : 'a -> 'a -> bool
+val le : 'a -> 'a -> bool
+val gt : 'a -> 'a -> bool
+val ge : 'a -> 'a -> bool
+(** [lt]/[le]/[gt]/[ge] are [(<)]/[(<=)]/[(>)]/[(>=)] — Clojure's two-arg
+    [<], [<=], [>], [>=]. *)
+
+val compare : 'a -> 'a -> int
+(** [compare a b] is [Stdlib.compare] — Clojure's [compare]. *)
+
+val not : bool -> bool
+(** [not b] — Clojure's [not]. *)
+
+val true_ : bool -> bool
+(** [true_ x] is [x = true] — Clojure's [true?]. *)
+
+val false_ : bool -> bool
+(** [false_ x] is [x = false] — Clojure's [false?]. *)
+
+val or_ : bool -> bool -> bool
+val and_ : bool -> bool -> bool
+(** [or_ a b] / [and_ a b] are [(||)]/[(&&)] as functions — both sides are
+    already evaluated (no short-circuit). *)
 
 (** {1 Numbers} *)
 
@@ -345,6 +502,62 @@ val odd_ : int -> bool
 
 val abs : int -> int
 (** [abs x] — Clojure's [abs]. *)
+
+val add : int -> int -> int
+val sub : int -> int -> int
+val mul : int -> int -> int
+val div : int -> int -> int
+(** [add]/[sub]/[mul]/[div] are the int operators — Clojure's two-arg
+    [+], [-], [*], [/]. *)
+
+val min : 'a -> 'a -> 'a
+val max : 'a -> 'a -> 'a
+(** [min]/[max] are [Stdlib.min]/[Stdlib.max] — Clojure's two-arg
+    [min]/[max]. *)
+
+val pos_int_ : int -> bool
+val neg_int_ : int -> bool
+val nat_int_ : int -> bool
+(** [pos_int_]/[neg_int_]/[nat_int_] test int sign — Clojure's [pos-int?],
+    [neg-int?], [nat-int?]. *)
+
+val nan_ : float -> bool
+(** [nan_ x] is [true] when [x] is NaN — Clojure's [NaN?]. *)
+
+val infinite_ : float -> bool
+(** [infinite_ x] is [true] when [x] is infinite — Clojure's [infinite?]. *)
+
+val unchecked_add : int -> int -> int
+val unchecked_subtract : int -> int -> int
+val unchecked_multiply : int -> int -> int
+val unchecked_inc : int -> int
+val unchecked_dec : int -> int
+val unchecked_negate : int -> int
+(** The [unchecked-*] family — in OCaml integer arithmetic never checks for
+    overflow, so these are aliases of the checked variants. *)
+
+(** {1 Bitwise} *)
+
+val bit_not : int -> int
+val bit_and : int -> int -> int
+val bit_or : int -> int -> int
+val bit_xor : int -> int -> int
+val bit_and_not : int -> int -> int
+(** The [bit-*] family on ints — Clojure's [bit-not], [bit-and], [bit-or],
+    [bit-xor], [bit-and-not]. *)
+
+val bit_shift_left : int -> int -> int
+val bit_shift_right : int -> int -> int
+val unsigned_bit_shift_right : int -> int -> int
+(** Clojure's [bit-shift-left], [bit-shift-right] (arithmetic) and
+    [unsigned-bit-shift-right] (logical). *)
+
+val bit_set : int -> int -> int
+val bit_clear : int -> int -> int
+val bit_flip : int -> int -> int
+val bit_test : int -> int -> bool
+(** [bit_set x i]/[bit_clear]/[bit_flip]/[bit_test] act on bit [i] —
+    Clojure's [bit-set], [bit-clear], [bit-flip], [bit-test]. *)
 
 val quot : int -> int -> int
 (** [quot a b] truncating quotient — Clojure's [quot]. *)
@@ -382,6 +595,22 @@ val product : int coll -> int
 val sumf : float coll -> float
 (** [sumf c] is [reduce (+.) 0. c]. *)
 
+(** {1 Random and parsing} *)
+
+val random_uuid : ?rng:Stdlib.Random.State.t -> unit -> string
+(** [random_uuid ?rng ()] is a random type-4 UUID string — Clojure's
+    [random-uuid]. *)
+
+val uuid_ : string -> bool
+(** [uuid_ s] is [true] when [s] parses as a UUID ([8-4-4-4-12] hex) —
+    Clojure's [uuid?] applied to strings. *)
+
+val parse_boolean : string -> bool option
+val parse_int : string -> int option
+val parse_float : string -> float option
+(** Clojure's [parse-boolean], [parse-long] (as int), [parse-double] (as
+    float); [None] on invalid input. *)
+
 (** {1 Strings and printing} *)
 
 val str : string coll -> string
@@ -396,6 +625,18 @@ val println : string -> unit
 
 val prn : string -> unit
 (** Alias for {!println} — Clojure's [prn] for strings. *)
+
+val format : ('a, unit, string) format -> 'a
+(** [format fmt ...] is [Printf.sprintf] — Clojure's [format]. *)
+
+val printf : ('a, out_channel, unit) format -> 'a
+(** [printf fmt ...] is [Printf.printf] — Clojure's [printf]. *)
+
+val newline : unit -> unit
+(** [newline ()] writes a newline — Clojure's [newline]. *)
+
+val flush : unit -> unit
+(** [flush ()] flushes stdout — Clojure's [flush]. *)
 
 (** {1 Reference types} *)
 

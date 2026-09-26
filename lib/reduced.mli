@@ -18,3 +18,7 @@ val unreduced : 'a t -> 'a
 
 val reduced_ : 'a t -> bool
 (** [reduced_ r] is [true] when [r] was built with {!reduced}. *)
+
+val ensure_reduced : 'a t -> 'a t
+(** [ensure_reduced r] wraps [Continue x] as [Reduced x]; already-reduced
+    values pass through — Clojure's [ensure-reduced]. *)

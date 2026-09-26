@@ -37,6 +37,39 @@ let test_reduced () =
   Alcotest.(check bool) "reduced?" true (Reduced.reduced_ (Reduced.reduced 1));
   Alcotest.(check bool) "reduced? no" false (Reduced.reduced_ (Reduced.continue 1))
 
+
+let test_watch () =
+  let a = Atom.atom 0 in
+  let log = ref [] in
+  Atom.add_watch a "w" (fun k _a old new_ -> log := (k, old, new_) :: !log);
+  ignore (Atom.reset_bang a 1);
+  ignore (Atom.swap_bang a (fun x -> x + 1));
+  Alcotest.(check (list (triple string int int))) "watch calls"
+    [ ("w", 1, 2); ("w", 0, 1) ] !log;
+  Atom.remove_watch a "w";
+  ignore (Atom.reset_bang a 9);
+  Alcotest.(check (list (triple string int int))) "removed"
+    [ ("w", 1, 2); ("w", 0, 1) ] !log;
+  (* different key types coexist *)
+  let hits = ref 0 in
+  Atom.add_watch a 7 (fun _k _a _o _n -> incr hits);
+  ignore (Atom.reset_bang a 0);
+  Alcotest.(check int) "int-keyed watch" 1 !hits
+
+let test_validator () =
+  let a = Atom.atom 0 in
+  Alcotest.(check bool) "no validator" true (Atom.get_validator a = None);
+  Atom.set_validator_bang a (Some (fun x -> x >= 0));
+  Alcotest.check_raises "rejected"
+    (Invalid_argument "Clj_core.Atom: validator rejected the new value")
+    (fun () -> ignore (Atom.reset_bang a (-1)));
+  Alcotest.(check int) "unchanged" 0 (Atom.deref a);
+  ignore (Atom.reset_bang a 5);
+  Alcotest.(check int) "accepted" 5 (Atom.deref a);
+  Atom.set_validator_bang a None;
+  ignore (Atom.reset_bang a (-3));
+  Alcotest.(check int) "cleared" (-3) (Atom.deref a)
+
 let () =
   Alcotest.run "Atom"
     [
@@ -44,4 +77,6 @@ let () =
       ("volatile", [ Alcotest.test_case "ops" `Quick test_volatile ]);
       ("delay", [ Alcotest.test_case "ops" `Quick test_delay ]);
       ("reduced", [ Alcotest.test_case "ops" `Quick test_reduced ]);
+      ("watch", [ Alcotest.test_case "ops" `Quick test_watch ]);
+      ("validator", [ Alcotest.test_case "ops" `Quick test_validator ]);
     ]

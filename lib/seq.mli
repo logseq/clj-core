@@ -121,9 +121,37 @@ val nth_opt : 'a t -> int -> 'a option
 val nthrest : 'a t -> int -> 'a t
 (** [nthrest s n] drops [n] elements — Clojure's [nthrest]. *)
 
+val nth_next : 'a t -> int -> 'a t option
+(** [nth_next s n] is [next] of {!nthrest} — Clojure's [nthnext]. *)
+
+val fnext : 'a t -> 'a option
+(** [fnext s] is [first] of {!next} — Clojure's [fnext]. *)
+
+val nfirst : 'a t t -> 'a t option
+(** [nfirst s] is [next] of {!first} — Clojure's [nfirst] on a seq of
+    seqs. *)
+
+val nnext : 'a t -> 'a t option
+(** [nnext s] is [next] of {!next} — Clojure's [nnext]. *)
+
 val count : 'a t -> int
 (** [count s] realizes [s] and returns its length — Clojure's [(count s)].
     An infinite sequence diverges. *)
+
+val bounded_count : int -> 'a t -> int
+(** [bounded_count n s] counts up to [n] elements — realizes at most [n] of
+    them, so it terminates on infinite seqs. Clojure's [bounded-count]. *)
+
+val not_empty : 'a t -> 'a t option
+(** [not_empty s] is [Some s] or [None] on empty — Clojure's [not-empty]. *)
+
+val distinct_ : 'a t -> bool
+(** [distinct_ s] is [true] when all elements are structurally distinct —
+    realizes [s] once, holding a memo table while consumed. *)
+
+val sequence : 'a t -> 'a t
+(** [sequence s] is [s] — the coll->seq entry point lives at {!Core.sequence}
+    (the transducer arity is not ported). *)
 
 val length : 'a t -> int
 (** Alias for {!count}. *)
@@ -227,6 +255,20 @@ val reduce_r : ('acc -> 'a -> 'acc Reduced.t) -> 'acc -> 'a t -> 'acc
 
 val iter : ('a -> unit) -> 'a t -> unit
 (** [iter f s] applies [f] per element, for effects — realizes [s]. *)
+
+val run_ : ('a -> 'b) -> 'a t -> unit
+(** [run_ f s] applies [f] per element and discards the results — Clojure's
+    [run!]. *)
+
+val some_vals : 'a option t -> 'a t
+(** [some_vals s] keeps the [Some] values — Clojure's [some-vals] — lazy. *)
+
+val random_sample : ?prob:float -> ?rng:Stdlib.Random.State.t -> 'a t -> 'a t
+(** [random_sample ?prob ?rng s] keeps each element with probability [prob]
+    (default [1.0]) — lazy, Clojure's [random-sample]. *)
+
+val replicate : int -> 'a -> 'a t
+(** [replicate n x] is [repeat ~n x] — Clojure's [replicate]. *)
 
 val every_ : ('a -> bool) -> 'a t -> bool
 (** [every_ p s] is [true] when every element satisfies [p] — Clojure's

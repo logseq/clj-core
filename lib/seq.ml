@@ -366,3 +366,32 @@ let of_map = Map.to_seq
 let of_vec = Vec.to_seq
 let of_set = Set.to_seq
 let of_queue = Queue.to_seq
+
+let sequence s = s
+let run_ f s = iter (fun x -> ignore (f x)) s
+
+let not_empty s = match s () with Nil -> None | _ -> Some s
+let bounded_count n s = Stdlib.min n (count (take n s))
+let nth_next s n = next (nthrest s n)
+let fnext s = Option.bind (next s) first
+let nfirst s = Option.bind (first s) next
+let nnext s = Option.bind (next s) next
+
+let distinct_ s =
+  let seen = Hashtbl.create 16 in
+  let rec go s =
+    match uncons s with
+    | None -> true
+    | Some (x, xs) ->
+      if Hashtbl.mem seen x then false
+      else (
+        Hashtbl.add seen x ();
+        go xs)
+  in
+  go s
+
+let replicate n x = repeat ~n x
+let some_vals s = filter_map Fun.id s
+
+let random_sample ?(prob = 1.0) ?(rng = Stdlib.Random.State.make_self_init ()) s =
+  filter (fun _ -> Stdlib.Random.State.float rng 1.0 < prob) s

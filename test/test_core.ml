@@ -156,6 +156,169 @@ let test_coverage () =
   Core.prn "";
   Alcotest.(check bool) "print fns run" true true
 
+
+let test_cmp_logic () =
+  Alcotest.(check bool) "eq" true (Core.eq [ 1; 2 ] [ 1; 2 ]);
+  Alcotest.(check bool) "equal" true (Core.equal "a" "a");
+  Alcotest.(check bool) "not_eq" true (Core.not_eq 1 2);
+  Alcotest.(check bool) "identical_ same" true
+    (let x = [| 1 |] in Core.identical_ x x);
+  Alcotest.(check bool) "identical_ no" false
+    (Core.identical_ [| 1 |] [| 1 |]);
+  Alcotest.(check bool) "lt" true (Core.lt 1 2);
+  Alcotest.(check bool) "le" true (Core.le 2 2);
+  Alcotest.(check bool) "gt" true (Core.gt 3 2);
+  Alcotest.(check bool) "ge" true (Core.ge 3 3);
+  Alcotest.(check int) "compare" 0 (Core.compare "x" "x");
+  Alcotest.(check bool) "not" true (Core.not false);
+  Alcotest.(check bool) "true_" true (Core.true_ true);
+  Alcotest.(check bool) "false_" true (Core.false_ false);
+  Alcotest.(check bool) "or_" true (Core.or_ false true);
+  Alcotest.(check bool) "and_" false (Core.and_ true false)
+
+let test_arith () =
+  Alcotest.(check int) "add" 5 (Core.add 2 3);
+  Alcotest.(check int) "sub" 1 (Core.sub 4 3);
+  Alcotest.(check int) "mul" 6 (Core.mul 2 3);
+  Alcotest.(check int) "div" 2 (Core.div 7 3);
+  Alcotest.(check int) "min" 1 (Core.min 1 2);
+  Alcotest.(check int) "max" 2 (Core.max 1 2);
+  Alcotest.(check string) "min str" "a" (Core.min "b" "a");
+  Alcotest.(check bool) "pos_int_" true (Core.pos_int_ 3);
+  Alcotest.(check bool) "neg_int_" true (Core.neg_int_ (-3));
+  Alcotest.(check bool) "nat_int_" true (Core.nat_int_ 0);
+  Alcotest.(check bool) "nat_int_ no" false (Core.nat_int_ (-1));
+  Alcotest.(check bool) "nan_" true (Core.nan_ Float.nan);
+  Alcotest.(check bool) "infinite_" true (Core.infinite_ Float.infinity);
+  Alcotest.(check bool) "infinite_ no" false (Core.infinite_ 1.5);
+  Alcotest.(check int) "unchecked_add" 5 (Core.unchecked_add 2 3);
+  Alcotest.(check int) "unchecked_subtract" 1 (Core.unchecked_subtract 4 3);
+  Alcotest.(check int) "unchecked_multiply" 6 (Core.unchecked_multiply 2 3);
+  Alcotest.(check int) "unchecked_inc" 2 (Core.unchecked_inc 1);
+  Alcotest.(check int) "unchecked_dec" 0 (Core.unchecked_dec 1);
+  Alcotest.(check int) "unchecked_negate" (-2) (Core.unchecked_negate 2)
+
+let test_bits () =
+  Alcotest.(check int) "bit_not" (-6) (Core.bit_not 5);
+  Alcotest.(check int) "bit_and" 4 (Core.bit_and 6 5);
+  Alcotest.(check int) "bit_or" 7 (Core.bit_or 6 5);
+  Alcotest.(check int) "bit_xor" 3 (Core.bit_xor 6 5);
+  Alcotest.(check int) "bit_and_not" 2 (Core.bit_and_not 6 5);
+  Alcotest.(check int) "shl" 16 (Core.bit_shift_left 1 4);
+  Alcotest.(check int) "shr" (-4) (Core.bit_shift_right (-8) 1);
+  Alcotest.(check int) "ushr" Int.max_int (Core.unsigned_bit_shift_right (-1) 1);
+  Alcotest.(check int) "bit_set" 5 (Core.bit_set 4 0);
+  Alcotest.(check int) "bit_clear" 4 (Core.bit_clear 5 0);
+  Alcotest.(check int) "bit_flip" 7 (Core.bit_flip 5 1);
+  Alcotest.(check bool) "bit_test" true (Core.bit_test 5 2);
+  Alcotest.(check bool) "bit_test no" false (Core.bit_test 5 1)
+
+let test_fn_combinators () =
+  Alcotest.(check int) "partial" 5 (Core.partial ( + ) 2 3);
+  Alcotest.(check int) "partial2" 6 (Core.partial2 (fun a b c -> a + b + c) 1 2 3);
+  Alcotest.(check int) "partial3" 10
+    (Core.partial3 (fun a b c d -> a + b + c + d) 1 2 3 4);
+  let pos = Core.every_pred2 Core.pos_ Core.even_ in
+  Alcotest.(check bool) "every_pred2" true (pos 4);
+  Alcotest.(check bool) "every_pred2 no" false (pos (-2));
+  Alcotest.(check bool) "every_pred" true (Core.every_pred Core.pos_ 1);
+  let p = Core.every_pred3 Core.pos_ Core.even_ (fun x -> x < 10) in
+  Alcotest.(check bool) "every_pred3" true (p 4);
+  Alcotest.(check bool) "every_pred3 no" false (p 20);
+  let sf = Core.some_fn2 (fun x -> if x > 0 then Some x else None)
+      (fun x -> if x < 0 then Some (-x) else None) in
+  Alcotest.(check (option int)) "some_fn2" (Some 3) (sf (-3));
+  Alcotest.(check (option int)) "some_fn" (Some 1)
+    (Core.some_fn (fun x -> Some x) 1);
+  let sf3 =
+    Core.some_fn3 (fun _ -> None) (fun x -> if x = 2 then Some "two" else None)
+      (fun _ -> Some "three")
+  in
+  Alcotest.(check (option string)) "some_fn3" (Some "two") (sf3 2);
+  let rec count n = if n = 0 then Core.Done n else Core.More (fun () -> count (n - 1)) in
+  Alcotest.(check int) "trampoline" 0 (Core.trampoline (count 100000))
+
+let test_control_flow () =
+  Alcotest.(check int) "if_not" 1 (Core.if_not false (fun () -> 1) (fun () -> 2));
+  let hit = ref false in
+  Core.when_not false (fun () -> hit := true);
+  Alcotest.(check bool) "when_not" true !hit;
+  Alcotest.(check int) "if_none some" 5 (Core.if_none (Some 5) (fun () -> 0) (fun x -> x));
+  Alcotest.(check int) "if_none none" 0 (Core.if_none None (fun () -> 0) (fun x -> x));
+  let hit = ref 0 in
+  Core.when_not_nil (Some 7) (fun x -> hit := x);
+  Alcotest.(check int) "when_not_nil" 7 !hit;
+  let i = ref 0 in
+  Core.while_ (fun () -> !i < 3) (fun () -> incr i);
+  Alcotest.(check int) "while_" 3 !i;
+  Alcotest.(check (option int)) "cond_" (Some 20)
+    (Core.cond_ 5
+       [ ((fun x -> x < 0), (fun _ -> -1));
+         ((fun x -> x < 10), (fun x -> x * 4));
+         ((fun _ -> true), (fun _ -> 0)) ]);
+  Alcotest.(check (option string)) "condp" (Some "two")
+    (Core.condp Core.eq 2 [ (1, fun _ -> "one"); (2, fun _ -> "two") ]);
+  Alcotest.(check (option string)) "condp none" None
+    (Core.condp Core.eq 9 [ (1, fun _ -> "one") ]);
+  Alcotest.(check int) "time returns" 42 (Core.time (fun () -> 42))
+
+let test_parse_random () =
+  Alcotest.(check (option bool)) "parse_boolean" (Some true)
+    (Core.parse_boolean "true");
+  Alcotest.(check (option bool)) "parse_boolean no" None
+    (Core.parse_boolean "x");
+  Alcotest.(check (option int)) "parse_int" (Some 42) (Core.parse_int "42");
+  Alcotest.(check (option int)) "parse_int no" None (Core.parse_int "x");
+  Alcotest.(check (option (float 1e-9))) "parse_float" (Some 1.5)
+    (Core.parse_float "1.5");
+  Alcotest.(check (option (float 1e-9))) "parse_float no" None
+    (Core.parse_float "x");
+  let rng = Stdlib.Random.State.make [| 1 |] in
+  let u = Core.random_uuid ~rng () in
+  Alcotest.(check bool) "uuid_ generated" true (Core.uuid_ u);
+  Alcotest.(check bool) "uuid_ no" false (Core.uuid_ "not-a-uuid");
+  Alcotest.(check bool) "uuid_ bad hex" false
+    (Core.uuid_ "zzzzzzzz-0000-4000-8000-000000000000");
+  Alcotest.(check string) "format" "a-1" (Core.format "%s-%d" "a" 1);
+  Core.printf "%s" "";
+  Core.newline ();
+  Core.flush ()
+
+let test_coll_extras () =
+  let v = `Vec (Vec.of_list [ 1; 2; 3; 4 ]) in
+  Alcotest.(check int) "bounded_count" 3 (Core.bounded_count 3 v);
+  Alcotest.(check int) "bounded_count inf" 7
+    (Core.bounded_count 7 (`Seq (Seq.ints ())));
+  Alcotest.(check bool) "not_empty" true (Core.not_empty v <> None);
+  Alcotest.(check bool) "not_empty no" true (Core.not_empty (`Lst []) = None);
+  Alcotest.(check (option int)) "fnext" (Some 2) (Core.fnext v);
+  Alcotest.(check (option int)) "nnext" (Some 3)
+    (Option.bind (Core.nnext v) Stdlib.Seq.uncons |> Option.map fst);
+  Alcotest.(check (option int)) "nth_next" (Some 3)
+    (Option.bind (Core.nth_next v 1) Stdlib.Seq.uncons |> Option.map fst);
+  let ss = `Lst [ Stdlib.List.to_seq [ 1; 2 ]; Stdlib.List.to_seq [ 3 ] ] in
+  Alcotest.(check int_list) "nfirst" [ 2 ]
+    (match Core.nfirst ss with Some s -> Stdlib.List.of_seq s | None -> []);
+  Alcotest.(check bool) "distinct_" true (Core.distinct_ v);
+  Alcotest.(check bool) "distinct_ dup" false (Core.distinct_ (`Lst [ 1; 1 ]));
+  Alcotest.(check int_list) "some_vals" [ 1; 3 ]
+    (Stdlib.List.of_seq (Core.some_vals (`Lst [ Some 1; None; Some 3 ])));
+  let acc = ref [] in
+  Core.run_ (fun x -> acc := x :: !acc) v;
+  Alcotest.(check int_list) "run_" [ 4; 3; 2; 1 ] !acc;
+  Alcotest.(check int_list) "sequence" [ 1; 2; 3; 4 ]
+    (Stdlib.List.of_seq (Core.sequence v));
+  Alcotest.(check int_list) "replicate" [ 9; 9 ] (Stdlib.List.of_seq (Core.replicate 2 9));
+  let rng = Stdlib.Random.State.make [| 7 |] in
+  Alcotest.(check int) "random_sample len" 4
+    (Stdlib.Seq.length (Core.random_sample ~prob:1.0 ~rng v));
+  Alcotest.(check bool) "counted_ vec" true (Core.counted_ v);
+  Alcotest.(check bool) "counted_ seq" false (Core.counted_ (`Seq (Seq.ints ())));
+  Alcotest.(check bool) "indexed_ vec" true (Core.indexed_ v);
+  Alcotest.(check bool) "indexed_ lst" false (Core.indexed_ (`Lst []));
+  Alcotest.(check bool) "reversible_ vec" true (Core.reversible_ v);
+  Alcotest.(check bool) "sorted_ set" true (Core.sorted_ (`Set (Set.empty ())))
+
 let () =
   Alcotest.run "Core"
     [
@@ -167,4 +330,11 @@ let () =
       ("strings+refs", [ Alcotest.test_case "ops" `Quick test_strings_refs ]);
       ("errors", [ Alcotest.test_case "ops" `Quick test_errors ]);
       ("coverage", [ Alcotest.test_case "ops" `Quick test_coverage ]);
+      ("cmp+logic", [ Alcotest.test_case "ops" `Quick test_cmp_logic ]);
+      ("arith", [ Alcotest.test_case "ops" `Quick test_arith ]);
+      ("bits", [ Alcotest.test_case "ops" `Quick test_bits ]);
+      ("fn-combinators", [ Alcotest.test_case "ops" `Quick test_fn_combinators ]);
+      ("control-flow", [ Alcotest.test_case "ops" `Quick test_control_flow ]);
+      ("parse+random", [ Alcotest.test_case "ops" `Quick test_parse_random ]);
+      ("coll-extras", [ Alcotest.test_case "ops" `Quick test_coll_extras ]);
     ]

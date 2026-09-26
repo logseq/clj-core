@@ -102,6 +102,61 @@ let test_slice_equal () =
   Alcotest.(check str_int_list) "custom cmp order" [ ("c", 3); ("b", 2); ("a", 1) ] (Map.to_list desc)
 
 (* model test: random assoc/dissoc vs sorted association list *)
+
+let test_nested () =
+  let open Map in
+  let inner = of_list [ ("b", Leaf 42) ] in
+  let m = of_list [ ("a", Nest inner) ] in
+  (match get_in m [ "a"; "b" ] with
+  | Some (Leaf n) -> Alcotest.(check int) "get_in" 42 n
+  | _ -> Alcotest.fail "get_in leaf");
+  (match get_in m [ "a" ] with
+  | Some (Nest _) -> ()
+  | _ -> Alcotest.fail "get_in nest");
+  Alcotest.(check bool) "get_in miss" true (get_in m [ "x" ] = None);
+  let m_missing =
+    update_in m [ "z"; "w" ] (function None -> Leaf 9 | Some _ -> assert false)
+  in
+  (match get_in m_missing [ "z"; "w" ] with
+  | Some (Leaf n) -> Alcotest.(check int) "update_in creates" 9 n
+  | _ -> Alcotest.fail "update_in creates");
+  Alcotest.(check bool) "get_in deep miss" true (get_in m [ "a"; "z" ] = None);
+  let m2 = assoc_in (empty ~cmp:Stdlib.compare ()) [ "a"; "b" ] (Leaf 7) in
+  (match get_in m2 [ "a"; "b" ] with
+  | Some (Leaf n) -> Alcotest.(check int) "assoc_in" 7 n
+  | _ -> Alcotest.fail "assoc_in");
+  let m3 =
+    update_in m [ "a"; "b" ] (function
+      | Some (Leaf n) -> Leaf (n + 1)
+      | _ -> assert false)
+  in
+  (match get_in m3 [ "a"; "b" ] with
+  | Some (Leaf n) -> Alcotest.(check int) "update_in" 43 n
+  | _ -> Alcotest.fail "update_in");
+  (* original untouched *)
+  (match get_in m [ "a"; "b" ] with
+  | Some (Leaf n) -> Alcotest.(check int) "persistent" 42 n
+  | _ -> Alcotest.fail "persistent");
+  Alcotest.check_raises "empty path"
+    (Invalid_argument "Clj_core.Map.assoc_in: empty path") (fun () ->
+      ignore (assoc_in m [] (Leaf 0)))
+
+let test_sorted_views () =
+  let desc a b = Stdlib.compare b a in
+  let m = Map.sorted_map_by desc [ (1, "x"); (3, "z"); (2, "y") ] in
+  Alcotest.(check (list (pair int string)))
+    "sorted_map_by" [ (3, "z"); (2, "y"); (1, "x") ]
+    (Stdlib.List.of_seq (Map.to_seq m));
+  Alcotest.(check string) "key" "k" (Map.key ("k", 1));
+  Alcotest.(check int) "value" 1 (Map.value ("k", 1));
+  let m = Map.of_list [ (1, "a"); (2, "b"); (3, "c"); (4, "d") ] in
+  Alcotest.(check (list (pair int string)))
+    "subseq" [ (2, "b"); (3, "c") ]
+    (Stdlib.List.of_seq (Map.subseq ~from_:2 ~to_:4 m));
+  Alcotest.(check (list (pair int string)))
+    "rsubseq" [ (3, "c"); (2, "b") ]
+    (Stdlib.List.of_seq (Map.rsubseq ~from_:2 ~to_:4 m))
+
 let test_model () =
   let rng = Random.State.make [| 7 |] in
   let m = ref (Map.empty ()) and model = ref [] in
@@ -154,5 +209,7 @@ let () =
       ("iteration", [ Alcotest.test_case "ops" `Quick test_iteration ]);
       ("slice+equal", [ Alcotest.test_case "ops" `Quick test_slice_equal ]);
       ("coverage", [ Alcotest.test_case "ops" `Quick test_coverage ]);
+      ("nested", [ Alcotest.test_case "ops" `Quick test_nested ]);
+      ("sorted views", [ Alcotest.test_case "ops" `Quick test_sorted_views ]);
       ("model", [ Alcotest.test_case "random vs assoc list" `Slow test_model ]);
     ]

@@ -40,10 +40,24 @@ let test_symbol () =
   Alcotest.(check bool) "equal" true (Symbol.equal s (Symbol.symbol ~ns:"my.ns" "foo"));
   Alcotest.(check int) "hash" (Symbol.hash s) (Symbol.hash (Symbol.of_string "my.ns/foo"))
 
+let test_qualified () =
+  let k = Keyword.of_string ":my.ns/foo" in
+  Alcotest.(check bool) "qualified_ kw" true (Keyword.qualified_ k);
+  Alcotest.(check bool) "simple_ kw" false (Keyword.simple_ k);
+  let k = Keyword.of_string ":foo" in
+  Alcotest.(check bool) "qualified_ no" false (Keyword.qualified_ k);
+  Alcotest.(check bool) "simple_ yes" true (Keyword.simple_ k);
+  let s = Symbol.of_string "my.ns/foo" in
+  Alcotest.(check bool) "qualified_ sym" true (Symbol.qualified_ s);
+  Alcotest.(check bool) "simple_ sym no" false (Symbol.simple_ s);
+  let s = Symbol.of_string "foo" in
+  Alcotest.(check bool) "simple_ sym" true (Symbol.simple_ s)
+
 let () =
   Alcotest.run "Keyword+Symbol"
     [
       ("keyword", [ Alcotest.test_case "ops" `Quick test_keyword ]);
       ("keyword-as-key", [ Alcotest.test_case "map key" `Quick test_keyword_as_key ]);
       ("symbol", [ Alcotest.test_case "ops" `Quick test_symbol ]);
+      ("qualified", [ Alcotest.test_case "ops" `Quick test_qualified ]);
     ]

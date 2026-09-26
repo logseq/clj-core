@@ -51,6 +51,13 @@ let test_split_find () =
   Alcotest.(check string) "replace_first" "aXb,c" (S.replace_first "a,b,c" ~from:"," ~by:"X");
   Alcotest.(check string) "replace missing" "abc" (S.replace "abc" ~from:"z" ~by:"X")
 
+let test_trim_newline () =
+  Alcotest.(check string) "lf" "abc" (S.trim_newline "abc\n");
+  Alcotest.(check string) "crlf" "abc" (S.trim_newline "abc\r\n");
+  Alcotest.(check string) "multi" "abc" (S.trim_newline "abc\n\r\n");
+  Alcotest.(check string) "inner kept" "a\nb" (S.trim_newline "a\nb\n");
+  Alcotest.(check string) "empty" "" (S.trim_newline "")
+
 let () =
   Alcotest.run "Str"
     [
@@ -58,4 +65,5 @@ let () =
       ("predicates", [ Alcotest.test_case "ops" `Quick test_predicates ]);
       ("transforms", [ Alcotest.test_case "ops" `Quick test_transforms ]);
       ("split+find", [ Alcotest.test_case "ops" `Quick test_split_find ]);
+      ("trim_newline", [ Alcotest.test_case "ops" `Quick test_trim_newline ]);
     ]

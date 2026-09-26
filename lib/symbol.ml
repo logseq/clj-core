@@ -14,6 +14,8 @@ let of_string s =
 let name s = s.name
 let namespace s = s.ns
 let namespaced_ s = Option.is_some s.ns
+let qualified_ = namespaced_
+let simple_ s = Option.is_none s.ns
 let to_string s =
   match s.ns with Some ns -> ns ^ "/" ^ s.name | None -> s.name
 

@@ -19,6 +19,14 @@ val namespace : t -> string option
 val namespaced_ : t -> bool
 (** [namespaced_ s] is [true] when [s] has a namespace. *)
 
+val qualified_ : t -> bool
+(** Alias for {!namespaced_} — Clojure's [qualified-symbol?] restricted to
+    symbols. *)
+
+val simple_ : t -> bool
+(** [simple_ s] is [true] when [s] has no namespace — Clojure's
+    [simple-symbol?] restricted to symbols. *)
+
 val to_string : t -> string
 (** [to_string s] renders the reader form, e.g. ["ns/name"]. *)
 
