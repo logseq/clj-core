@@ -134,11 +134,11 @@ val nfirst : 'a t t -> 'a t option
 val nnext : 'a t -> 'a t option
 (** [nnext s] is [next] of {!next} — Clojure's [nnext]. *)
 
-val count : 'a t -> int
+val count : 'a t @ local -> int
 (** [count s] realizes [s] and returns its length — Clojure's [(count s)].
     An infinite sequence diverges. *)
 
-val bounded_count : int -> 'a t -> int
+val bounded_count : int -> 'a t @ local -> int
 (** [bounded_count n s] counts up to [n] elements — realizes at most [n] of
     them, so it terminates on infinite seqs. Clojure's [bounded-count]. *)
 
@@ -153,13 +153,13 @@ val sequence : 'a t -> 'a t
 (** [sequence s] is [s] — the coll->seq entry point lives at {!Core.sequence}
     (the transducer arity is not ported). *)
 
-val length : 'a t -> int
+val length : 'a t @ local -> int
 (** Alias for {!count}. *)
 
-val is_empty : 'a t -> bool
+val is_empty : 'a t @ local -> bool
 (** [is_empty s] forces one step and reports whether [s] is [Nil]. *)
 
-val empty_ : 'a t -> bool
+val empty_ : 'a t @ local -> bool
 (** Alias for {!is_empty} — Clojure's [empty?]. *)
 
 (** {1 Lazy transforms} *)
@@ -359,3 +359,76 @@ val of_set : 'a Set.t -> 'a t
 
 val of_queue : 'a Queue.t -> 'a t
 (** [of_queue q] iterates front-to-back — Clojure's [(seq q)]. *)
+
+(** {1 Borrow variants (OxCaml)}
+
+    [*_local] functions accept [local] arguments and return [local]
+    results — they exist for the lg OxCaml backend: emitted code picks
+    them when the seq's region is strictly local so stack-allocated
+    literals and closures may flow through. Plain callers keep using the
+    global versions above. *)
+
+val uncons_local : 'a t @ local -> 'a node @ local
+val cons_local : 'a @ local -> 'a t @ local -> 'a t @ local
+val singleton_local : 'a -> 'a t @ local
+val lazy_seq_local : (unit -> 'a t @ local) @ local -> 'a t @ local
+
+val of_list_local : 'a list @ local -> 'a t @ local
+val of_vec_local : 'a Vec.t @ local -> 'a t @ local
+val of_set_local : 'a Set.t @ local -> 'a t @ local
+val of_map_local : ('k, 'v) Map.t @ local -> ('k * 'v) t @ local
+val of_string_local : string @ local -> char t @ local
+
+val map_local : ('a @ local -> 'b) @ local -> 'a t @ local -> 'b t @ local
+val mapi_local : (int -> 'a @ local -> 'b) @ local -> 'a t @ local -> 'b t @ local
+val map_indexed_local : (int -> 'a @ local -> 'b) @ local -> 'a t @ local -> 'b t @ local
+val filter_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local
+val remove_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local
+val filter_map_local : ('a @ local -> 'b option) @ local -> 'a t @ local -> 'b t @ local
+val keep_local : ('a @ local -> 'b option) @ local -> 'a t @ local -> 'b t @ local
+val mapcat_local : ('a @ local -> 'b t) @ local -> 'a t @ local -> 'b t @ local
+
+val take_local : int -> 'a t @ local -> 'a t @ local
+val drop_local : int -> 'a t @ local -> 'a t @ local
+val take_while_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local
+val drop_while_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local
+val take_nth_local : int -> 'a t @ local -> 'a t @ local
+val nthrest_local : 'a t @ local -> int -> 'a t @ local
+val drop_last_local : int -> 'a t @ local -> 'a t @ local
+val rest_local : 'a t @ local -> 'a t @ local
+val next_local : 'a t @ local -> 'a t option @ local
+val interleave_local : 'a t @ local -> 'a t @ local -> 'a t @ local
+val interpose_local : 'a @ local -> 'a t @ local -> 'a t @ local
+val partition_local : int -> 'a t @ local -> 'a t t @ local
+val partition_all_local : int -> 'a t @ local -> 'a t t @ local
+val reductions_local : ('b -> 'a @ local -> 'b) @ local -> 'b -> 'a t @ local -> 'b t @ local
+val dedupe_local : 'a t @ local -> 'a t @ local
+val concat_local : 'a t t @ local -> 'a t @ local
+val iterate_local : ('a -> 'a) @ local -> 'a -> 'a t @ local
+val repeat_local : ?n:int -> 'a -> 'a t @ local
+val repeatedly_local : ?n:int -> (unit -> 'a) @ local -> 'a t @ local
+val range_local : ?start:int -> ?step:int -> int -> int t @ local
+val ints_local : ?start:int -> ?step:int -> unit -> int t @ local
+
+val to_list_local : 'a t @ local -> 'a list @ local
+val to_vec_local : 'a t @ local -> 'a Vec.t
+val count_local : 'a t @ local -> int
+val is_empty_local : 'a t @ local -> bool
+val first_local : 'a t @ local -> 'a option @ local
+val second_local : 'a t @ local -> 'a option @ local
+val last_local : 'a t @ local -> 'a option @ local
+val nth_local : 'a t @ local -> int -> 'a @ local
+val nth_opt_local : 'a t @ local -> int -> 'a option @ local
+val take_last_local : int -> 'a t @ local -> 'a list @ local
+val split_at_local : int -> 'a t @ local -> 'a t @ local * 'a t @ local
+val split_with_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local * 'a t @ local
+val reduce_local : ('b -> 'a @ local -> 'b) @ local -> 'b -> 'a t @ local -> 'b
+val fold_left_local : ('b -> 'a @ local -> 'b) @ local -> 'b -> 'a t @ local -> 'b
+val every_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
+val exists_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
+val find_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a option @ local
+val mem_local : 'a @ local -> 'a t @ local -> bool
+val iter_local : ('a @ local -> unit) @ local -> 'a t @ local -> unit
+val dorun_local : 'a t @ local -> unit
+val sort_local : ?cmp:('a @ local -> 'a @ local -> int) @ local -> 'a t @ local -> 'a t @ local
+val reverse_local : 'a t @ local -> 'a t @ local

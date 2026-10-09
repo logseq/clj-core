@@ -1,5 +1,5 @@
 (library
  (name clj_core)
  (public_name clj-core)
- (modes native byte melange)
+ (modes native byte)
  (libraries rrbvec))

@@ -15,16 +15,16 @@ val empty : 'a t
 val singleton : 'a -> 'a t
 (** [singleton x] is the one-element vector [\[x\]]. *)
 
-val of_list : 'a list -> 'a t
+val of_list : 'a list @ local -> 'a t
 (** [of_list \[x1; x2; ...\]] builds a vector in order. *)
 
-val of_array : 'a array -> 'a t
+val of_array : 'a array @ local -> 'a t
 (** [of_array a] copies the array into a vector. *)
 
-val of_seq : 'a Stdlib.Seq.t -> 'a t
+val of_seq : 'a Stdlib.Seq.t @ local -> 'a t
 (** [of_seq s] realizes the sequence into a vector, in order. *)
 
-val init : int -> (int -> 'a) -> 'a t
+val init : int -> (int -> 'a) @ local -> 'a t
 (** [init n f] is [\[f 0; f 1; ...; f (n-1)\]]. *)
 
 val repeat : int -> 'a -> 'a t
@@ -33,56 +33,56 @@ val range : ?start:int -> ?step:int -> int -> int t
 (** [range ?start ?step stop] is [\[start; start+step; ...\]) bounded by [stop],
     like Clojure's [(range start stop step)]. Defaults: [start=0], [step=1]. *)
 
-val vec : 'a Stdlib.Seq.t -> 'a t
+val vec : 'a Stdlib.Seq.t @ local -> 'a t
 (** [vec s] materializes a sequence — Clojure's [(vec coll)]. *)
 
-val vector : 'a list -> 'a t
+val vector : 'a list @ local -> 'a t
 (** [vector \[a; b; ...\]] — Clojure's [(vector a b ...)]. *)
 
 (** {1 Predicates and size} *)
 
-val count : 'a t -> int
+val count : 'a t @ local -> int
 (** [count v] is the number of elements — Clojure's [(count v)]. *)
 
-val length : 'a t -> int
+val length : 'a t @ local -> int
 (** Alias for {!count}. *)
 
-val empty_ : 'a t -> bool
+val empty_ : 'a t @ local -> bool
 (** [empty_ v] is [true] when [v] has no elements — Clojure's [(empty? v)]. *)
 
-val is_empty : 'a t -> bool
+val is_empty : 'a t @ local -> bool
 (** Alias for {!empty_}. *)
-val contains_ : 'a t -> int -> bool
+val contains_ : 'a t @ local -> int -> bool
 (** [contains_ v i] is [true] when [i] is a valid index — Clojure's [(contains?
     v i)] checks the index, not the value. Use {!mem} for values. *)
 
-val mem : 'a -> 'a t -> bool
+val mem : 'a @ local -> 'a t @ local -> bool
 (** [mem x v] is [true] when [x] occurs in [v] (structural equality). Unlike
     Clojure's [contains?] on vectors, this checks values, not indices. *)
 
 (** {1 Access} *)
 
-val nth : 'a t -> int -> 'a
+val nth : 'a t @ local -> int -> 'a
 (** Raises [Invalid_argument] when out of bounds. *)
 
-val nth_opt : 'a t -> int -> 'a option
+val nth_opt : 'a t @ local -> int -> 'a option
 (** [nth_opt v i] is [Some (nth v i)] or [None] out of bounds. *)
 
-val get : 'a t -> int -> 'a option
+val get : 'a t @ local -> int -> 'a option
 (** [get v i] is {!nth_opt} — Clojure's [(get v i)] returns nil when missing. *)
 
-val first : 'a t -> 'a option
+val first : 'a t @ local -> 'a option
 (** [first v] is the first element, [None] on empty — Clojure's [(first v)]. *)
 
-val last : 'a t -> 'a option
+val last : 'a t @ local -> 'a option
 (** [last v] is the last element, [None] on empty — Clojure's [(last v)]. *)
-val peek : 'a t -> 'a option
+val peek : 'a t @ local -> 'a option
 (** [peek v] is {!last} — Clojure's [(peek v)]. *)
 
-val peek_front : 'a t -> 'a option
+val peek_front : 'a t @ local -> 'a option
 (** Alias for {!first}. *)
 
-val peek_back : 'a t -> 'a option
+val peek_back : 'a t @ local -> 'a option
 (** Alias for {!last}. *)
 
 (** {1 Update (persistent)} *)
@@ -154,7 +154,7 @@ val drop_while : ('a -> bool) -> 'a t -> 'a t
 
 val split_at : int -> 'a t -> 'a t * 'a t
 (** [split_at n v] is [(take n v, drop n v)] — Clojure's [split-at]. *)
-val split_with : ('a -> bool) -> 'a t -> 'a t * 'a t
+val split_with : ('a -> bool) -> 'a t -> 'a t
 (** [split_with p v] is [(take_while p v, drop_while p v)]. *)
 
 val slice : ?start:int -> ?stop:int -> 'a t -> 'a t
@@ -172,37 +172,37 @@ val append : 'a t -> 'a t -> 'a t
 
 (** {1 Iteration and folding} *)
 
-val iter : ('a -> unit) -> 'a t -> unit
+val iter : ('a -> unit) @ local -> 'a t @ local -> unit
 (** [iter f v] applies [f] to each element in order, for effects. *)
 
-val iteri : (int -> 'a -> unit) -> 'a t -> unit
+val iteri : (int -> 'a -> unit) @ local -> 'a t @ local -> unit
 (** [iteri f v] applies [f i x] to each element with its index. *)
 
 val iter2 : ('a -> 'b -> unit) -> 'a t -> 'b t -> unit
 (** [iter2 f a b] applies [f] to paired elements; raises [Invalid_argument] on
     unequal lengths. *)
 
-val fold_left : ('acc -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val fold_left : ('acc -> 'a -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
 (** Left fold over [v]. *)
 
-val fold_right : ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
+val fold_right : ('a -> 'acc -> 'acc) @ local -> 'a t @ local -> 'acc -> 'acc
 (** Right fold over [v]. *)
 
-val foldi : ('acc -> int -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val foldi : ('acc -> int -> 'a -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
 (** [foldi f acc v] folds [f acc i x] over each element with its index. *)
-val reduce : ('acc -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val reduce : ('acc -> 'a -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
 (** [reduce] is {!fold_left} — Clojure's [(reduce f init coll)]. *)
 
-val reduce_kv : ('acc -> int -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val reduce_kv : ('acc -> int -> 'a -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
 (** [reduce_kv f acc v] folds with indices — Clojure's [reduce-kv]. *)
 
-val reduce_r : ('acc -> 'a -> 'acc Reduced.t) -> 'acc -> 'a t -> 'acc
+val reduce_r : ('acc -> 'a -> 'acc Reduced.t) @ local -> 'acc -> 'a t @ local -> 'acc
 (** [reduce_r f acc v] stops early when [f] returns [Reduced.reduced _]. *)
 
-val exists : ('a -> bool) -> 'a t -> bool
+val exists : ('a -> bool) @ local -> 'a t @ local -> bool
 (** [exists p v] is [true] when some element satisfies [p]. *)
 
-val for_all : ('a -> bool) -> 'a t -> bool
+val for_all : ('a -> bool) @ local -> 'a t @ local -> bool
 (** [for_all p v] is [true] when every element satisfies [p]. *)
 
 val every_ : ('a -> bool) -> 'a t -> bool
@@ -241,56 +241,56 @@ val map_indexed : (int -> 'a -> 'b) -> 'a t -> 'b t
 val filter : ('a -> bool) -> 'a t -> 'a t
 (** [filter p v] keeps elements satisfying [p], in order. *)
 
-val filterv : ('a -> bool) -> 'a t -> 'a t
+val filterv : ('a -> bool) @ local -> 'a t @ local -> 'a t
 (** Alias for {!filter} — Clojure's [filterv]. *)
 
-val remove : ('a -> bool) -> 'a t -> 'a t
+val remove : ('a -> bool) @ local -> 'a t @ local -> 'a t
 (** [remove p v] drops elements satisfying [p] — Clojure's [remove]. *)
 
-val filter_map : ('a -> 'b option) -> 'a t -> 'b t
+val filter_map : ('a -> 'b option) @ local -> 'a t @ local -> 'b t
 (** [filter_map f v] maps [f] and drops [None] results. *)
 
-val keep : ('a -> 'b option) -> 'a t -> 'b t
+val keep : ('a -> 'b option) @ local -> 'a t @ local -> 'b t
 (** Alias for {!filter_map} — Clojure's [keep]. *)
 
 val keep_indexed : (int -> 'a -> 'b option) -> 'a t -> 'b t
 (** [keep_indexed f v] maps [f i x] and drops [None] results — Clojure's
     [keep-indexed]. *)
 
-val mapcat : ('a -> 'b t) -> 'a t -> 'b t
+val mapcat : ('a -> 'b t) @ local -> 'a t @ local -> 'b t
 (** [mapcat f v] maps [f] and concatenates the result vectors. *)
 
-val flat_map : ('a -> 'b t) -> 'a t -> 'b t
+val flat_map : ('a -> 'b t) @ local -> 'a t @ local -> 'b t
 (** Alias for {!mapcat}. *)
 val zip : 'a t -> 'b t -> ('a * 'b) t
 (** [zip a b] pairs elements; stops at the shorter — Clojure semantics. *)
 
-val map2 : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+val map2 : ('a -> 'b -> 'c) @ local -> 'a t @ local -> 'b t @ local -> 'c t
 (** [map2 f a b] stops at the shorter — Clojure's [map f a b]. *)
-val rev : 'a t -> 'a t
+val rev : 'a t @ local -> 'a t
 (** [rev v] is [v] in reverse order. *)
 
-val reverse : 'a t -> 'a t
+val reverse : 'a t @ local -> 'a t
 (** Alias for {!rev} — Clojure's [reverse]. *)
 
-val sort : ?cmp:('a -> 'a -> int) -> 'a t -> 'a t
+val sort : ?cmp:(('a -> 'a -> int) @ local) -> 'a t @ local -> 'a t
 (** [sort ?cmp v] sorts ascending by [cmp] (default [Stdlib.compare]) —
     Clojure's [sort]. *)
 
-val sort_by : ?cmp:('b -> 'b -> int) -> ('a -> 'b) -> 'a t -> 'a t
+val sort_by : ?cmp:(('b -> 'b -> int) @ local) -> ('a -> 'b) @ local -> 'a t @ local -> 'a t
 (** [sort_by ?cmp f v] sorts ascending by the keys [f x] — Clojure's
     [sort-by]. *)
 
-val sort_uniq : ?cmp:('a -> 'a -> int) -> 'a t -> 'a t
+val sort_uniq : ?cmp:(('a -> 'a -> int) @ local) -> 'a t @ local -> 'a t
 (** [sort_uniq ?cmp v] sorts and removes duplicates. *)
 
-val shuffle : ?rng:Stdlib.Random.State.t -> 'a t -> 'a t
+val shuffle : ?rng:Stdlib.Random.State.t -> 'a t @ local -> 'a t
 (** [shuffle ?rng v] randomly permutes [v] (Fisher-Yates) — Clojure's
     [shuffle]. *)
-val distinct : 'a t -> 'a t
+val distinct : 'a t @ local -> 'a t
 (** Removes duplicates, keeping first occurrences (structural equality). *)
 
-val dedupe : 'a t -> 'a t
+val dedupe : 'a t @ local -> 'a t
 (** Collapses runs of equal adjacent elements — Clojure's [dedupe]. *)
 
 val split_by : ('a -> bool) -> 'a t -> 'a t * 'a t
@@ -322,19 +322,24 @@ val rest : 'a t -> 'a Stdlib.Seq.t
 val next : 'a t -> 'a Stdlib.Seq.t option
 (** [next v] is [None] when {!rest} would be empty — Clojure's [next]. *)
 
-val to_list : 'a t -> 'a list
+val to_list : 'a t @ local -> 'a list
 (** [to_list v] is the element list, in order. *)
 
-val to_array : 'a t -> 'a array
+val to_array : 'a t @ local -> 'a array
 (** [to_array v] copies [v] into a fresh array. *)
-val into : 'a t -> 'a Stdlib.Seq.t -> 'a t
+val into : 'a t -> 'a Stdlib.Seq.t @ local -> 'a t
 (** [into v s] conjs every element of [s] onto [v]. *)
 
 (** {1 Equality and comparison} *)
 
-val equal : ?eq:('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+val equal : ?eq:(('a -> 'a -> bool) @ local) -> 'a t @ local -> 'a t @ local -> bool
 (** [equal ?eq a b] compares element-wise with [eq] (default [(=)]). *)
 
-val compare : ?cmp:('a -> 'a -> int) -> 'a t -> 'a t -> int
+val compare : ?cmp:(('a -> 'a -> int) @ local) -> 'a t @ local -> 'a t @ local -> int
 (** [compare ?cmp a b] lexicographic comparison with [cmp] (default
     [Stdlib.compare]); a shorter prefix sorts first. *)
+
+(* borrow variants *)
+val to_seq_local : 'a t @ local -> 'a Stdlib.Seq.t @ local
+val of_seq_local : 'a Stdlib.Seq.t @ local -> 'a t
+

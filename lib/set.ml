@@ -75,3 +75,6 @@ let to_list s = Stdlib.List.map fst (Map.to_list s)
 let to_vec s = Vec.map fst (Map.to_vec s)
 
 let equal a b = Map.equal ~eq:(fun () () -> true) a b
+
+(* borrow variants *)
+let to_seq_local s = Map.keys_local s

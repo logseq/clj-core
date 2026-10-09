@@ -267,3 +267,7 @@ let into v s = Stdlib.Seq.fold_left (fun acc x -> Rrbvec.push_back acc x) v s
 
 let equal ?(eq = ( = )) a b = Rrbvec.equal eq a b
 let compare ?(cmp = Stdlib.compare) a b = Rrbvec.compare cmp a b
+
+(* borrow variants *)
+let to_seq_local = Rrbvec.to_seq_local
+let of_seq_local = Rrbvec.of_seq

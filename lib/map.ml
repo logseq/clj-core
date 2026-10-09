@@ -211,3 +211,20 @@ let equal ?(eq = ( = )) a b =
          let i, found = find_index b k in
          found && eq v (snd (Vec.nth b.entries i)))
        a.entries
+
+(* borrow variants *)
+let to_seq_local m = Vec.to_seq_local m.entries
+let keys_local m =
+  let rec go s () =
+    match s () with
+    | Stdlib.Seq.Nil -> Stdlib.Seq.Nil
+    | Stdlib.Seq.Cons ((k, _), rest) -> Stdlib.Seq.Cons (k, go rest)
+  in
+  go (to_seq_local m)
+let vals_local m =
+  let rec go s () =
+    match s () with
+    | Stdlib.Seq.Nil -> Stdlib.Seq.Nil
+    | Stdlib.Seq.Cons ((_, v), rest) -> Stdlib.Seq.Cons (v, go rest)
+  in
+  go (to_seq_local m)

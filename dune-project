@@ -1,7 +1,5 @@
 (lang dune 3.23)
 
-(using melange 1.0)
-
 (name clj-core)
 
 (generate_opam_files true)
@@ -28,5 +26,4 @@
   (dune
    (>= 3.23))
   rrbvec
-  melange
   (alcotest :with-test)))
