@@ -155,29 +155,36 @@ val into : ('k, 'v) t -> ('k * 'v) Stdlib.Seq.t -> ('k, 'v) t
 
 (** {1 Iteration} *)
 
-val iter : ('k @ local -> 'v @ local -> unit) @ local -> ('k, 'v) t @ local -> unit
+val iter : ('k -> 'v -> unit) -> ('k, 'v) t -> unit
+val iter_local : ('k @ local -> 'v @ local -> unit) @ local -> ('k, 'v) t @ local -> unit
 (** [iter f m] applies [f k v] to each entry in key order. *)
 
-val fold : ('acc -> 'k @ local -> 'v @ local -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
+val fold : ('acc -> 'k -> 'v -> 'acc) -> 'acc -> ('k, 'v) t -> 'acc
+val fold_local : ('acc -> 'k @ local -> 'v @ local -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
 (** Left fold [f acc k v] over entries in key order. *)
 
-val fold_kv : ('acc -> 'k @ local -> 'v @ local -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
+val fold_kv : ('acc -> 'k -> 'v -> 'acc) -> 'acc -> ('k, 'v) t -> 'acc
+val fold_kv_local : ('acc -> 'k @ local -> 'v @ local -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
 (** Alias for {!fold}. *)
 
-val reduce_kv : ('acc -> 'k @ local -> 'v @ local -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
+val reduce_kv : ('acc -> 'k -> 'v -> 'acc) -> 'acc -> ('k, 'v) t -> 'acc
+val reduce_kv_local : ('acc -> 'k @ local -> 'v @ local -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
 (** Alias for {!fold} — Clojure's [reduce-kv]. *)
 
-val every_ : ('k @ local -> 'v @ local -> bool) @ local -> ('k, 'v) t @ local -> bool
+val every_ : ('k -> 'v -> bool) -> ('k, 'v) t -> bool
+val every_local : ('k @ local -> 'v @ local -> bool) @ local -> ('k, 'v) t @ local -> bool
 (** [every_ f m] is [true] when [f k v] holds for every entry — Clojure's
     [every?]. *)
 
 val some : ('k -> 'v -> bool) -> ('k, 'v) t -> ('k * 'v) option
 (** [some f m] is the first entry where [f k v] holds. *)
 
-val find_map : ('k @ local -> 'v @ local -> 'r option) @ local -> ('k, 'v) t @ local -> 'r option
+val find_map : ('k -> 'v -> 'r option) -> ('k, 'v) t -> 'r option
+val find_map_local : ('k @ local -> 'v @ local -> 'r option) @ local -> ('k, 'v) t @ local -> 'r option
 (** [find_map f m] is the first [Some _] produced by [f k v]. *)
 
-val count_matching : ('k @ local -> 'v @ local -> bool) @ local -> ('k, 'v) t @ local -> int
+val count_matching : ('k -> 'v -> bool) -> ('k, 'v) t -> int
+val count_matching_local : ('k @ local -> 'v @ local -> bool) @ local -> ('k, 'v) t @ local -> int
 (** [count_matching f m] counts entries where [f k v] holds. *)
 
 (** {1 Slices (comparator-ordered)} *)

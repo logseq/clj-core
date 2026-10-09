@@ -160,25 +160,44 @@ let merge_with f a b =
     a (to_seq b)
 
 let into m s = Stdlib.Seq.fold_left conj m s
-let iter (f @ local) (m @ local) =
+let iter f (m : ('k, 'v) t) =
   let () = Vec.iter (fun (k, v) -> f k v) m.entries in
   ()
-let fold (f @ local) acc (m @ local) =
+let iter_local (f @ local) (m @ local) =
+  let () = Vec.iter_local (fun (k, v) -> f k v) m.entries in
+  ()
+let fold f acc (m : ('k, 'v) t) =
   let acc' = ref acc in
   let () = Vec.iter (fun (k, v) -> acc' := f !acc' k v) m.entries in
   !acc'
+let fold_local (f @ local) acc (m @ local) =
+  let acc' = ref acc in
+  let () = Vec.iter_local (fun (k, v) -> acc' := f !acc' k v) m.entries in
+  !acc'
 let fold_kv = fold
+let fold_kv_local = fold_local
 let reduce_kv = fold
-let every_ (f @ local) (m @ local) =
+let reduce_kv_local = fold_local
+let every_ f (m : ('k, 'v) t) =
   let r = Vec.for_all (fun (k, v) -> f k v) m.entries in
   r
+let every_local (f @ local) (m @ local) =
+  let r = Vec.for_all_local (fun (k, v) -> f k v) m.entries in
+  r
 let some f m = Vec.find (fun (k, v) -> f k v) m.entries
-let find_map (f @ local) (m @ local) =
+let find_map f (m : ('k, 'v) t) =
   let r = Vec.find_map (fun (k, v) -> f k v) m.entries in
   r
-let count_matching (f @ local) (m @ local) =
+let find_map_local (f @ local) (m @ local) =
+  let r = Vec.find_map_local (fun (k, v) -> f k v) m.entries in
+  r
+let count_matching f (m : ('k, 'v) t) =
   let n = ref 0 in
   let () = Vec.iter (fun (k, v) -> if f k v then incr n) m.entries in
+  !n
+let count_matching_local (f @ local) (m @ local) =
+  let n = ref 0 in
+  let () = Vec.iter_local (fun (k, v) -> if f k v then incr n) m.entries in
   !n
 
 let slice_bounds m from_ to_ =

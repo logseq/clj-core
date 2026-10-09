@@ -127,29 +127,35 @@ val last : 'a t -> 'a option
 
 (** {1 Iteration} *)
 
-val iter : ('a @ local -> unit) @ local -> 'a t @ local -> unit
+val iter : ('a -> unit) -> 'a t -> unit
+val iter_local : ('a @ local -> unit) @ local -> 'a t @ local -> unit
 (** [iter f s] applies [f] to each element in ascending order. *)
 
-val fold : ('acc -> 'a @ local -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
+val fold : ('acc -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val fold_local : ('acc -> 'a @ local -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
 (** Left fold over elements in ascending order. *)
 
-val every_ : ('a @ local -> bool) @ local -> 'a t @ local -> bool
+val every_ : ('a -> bool) -> 'a t -> bool
+val every_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
 (** [every_ p s] is [true] when every element satisfies [p] — Clojure's
     [every?]. *)
 
-val for_all : ('a @ local -> bool) @ local -> 'a t @ local -> bool
+val for_all : ('a -> bool) -> 'a t -> bool
+val for_all_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
 (** Alias for {!every_}. *)
 
 val some : ('a -> bool) -> 'a t -> 'a option
 (** [some p s] is the first (smallest) element satisfying [p]. *)
 
-val exists : ('a @ local -> bool) @ local -> 'a t @ local -> bool
+val exists : ('a -> bool) -> 'a t -> bool
+val exists_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
 (** [exists p s] is [true] when some element satisfies [p]. *)
 
 val find : ('a -> bool) -> 'a t -> 'a option
 (** Alias for {!some}. *)
 
-val count_matching : ('a @ local -> bool) @ local -> 'a t @ local -> int
+val count_matching : ('a -> bool) -> 'a t -> int
+val count_matching_local : ('a @ local -> bool) @ local -> 'a t @ local -> int
 (** [count_matching p s] counts elements satisfying [p]. *)
 
 (** {1 Conversions} *)

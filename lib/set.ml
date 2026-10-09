@@ -62,15 +62,23 @@ let subseq ?from_ ?to_ s = Map.keys (Map.slice ?from_ ?to_ s)
 let rsubseq ?from_ ?to_ s =
   Stdlib.Seq.map fst (Map.rseq (Map.slice ?from_ ?to_ s))
 
-let iter (f @ local) (s @ local) = let () = Map.iter (fun k () -> f k) s in ()
-let fold (f @ local) acc (s @ local) = let r = Map.fold (fun acc k () -> f acc k) acc s in r
-let every_ (p @ local) (s @ local) = let r = Map.every_ (fun k () -> p k) s in r
+let iter f (s : 'a t) = let () = Map.iter (fun k () -> f k) s in ()
+let iter_local (f @ local) (s @ local) = let () = Map.iter_local (fun k () -> f k) s in ()
+let fold f acc (s : 'a t) = let r = Map.fold (fun acc k () -> f acc k) acc s in r
+let fold_local (f @ local) acc (s @ local) = let r = Map.fold_local (fun acc k () -> f acc k) acc s in r
+let every_ p (s : 'a t) = let r = Map.every_ (fun k () -> p k) s in r
+let every_local (p @ local) (s @ local) = let r = Map.every_local (fun k () -> p k) s in r
 let for_all = every_
+let for_all_local = every_local
 let some p s = Option.map fst (Map.some (fun k () -> p k) s)
-let exists (p @ local) (s @ local) = not (every_ (fun k -> not (p k)) s)
+let exists p (s : 'a t) = not (every_ (fun k -> not (p k)) s)
+let exists_local (p @ local) (s @ local) = not (every_local (fun k -> not (p k)) s)
 let find = some
-let count_matching (p @ local) (s @ local) =
+let count_matching p (s : 'a t) =
   let r = Map.count_matching (fun k () -> p k) s in
+  r
+let count_matching_local (p @ local) (s @ local) =
+  let r = Map.count_matching_local (fun k () -> p k) s in
   r
 
 let seq = Map.keys

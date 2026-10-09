@@ -121,21 +121,77 @@ let remove_at v i =
     | Some a, Some b -> Rrbvec.concat a b
     | _ -> assert false
 
-let iter = Rrbvec.iter
-let iteri = Rrbvec.iteri
-let iter2 = Rrbvec.iter2
-let fold_left = Rrbvec.fold_left
-let fold_right = Rrbvec.fold_right
+(* Callback consumers come in pairs: the plain name keeps the global
+   signature (callback sees global elements, takes a global vector), the
+   [_local] twin accepts a local vector and hands the callback
+   [@ local] elements. *)
+let iter f (v : 'a t) =
+  let n = Rrbvec.length v in
+  for i = 0 to n - 1 do
+    f (Rrbvec.nth v i)
+  done
+let iter_local = Rrbvec.iter
 
-let foldi (f @ local) acc (v @ local) =
+let iteri f (v : 'a t) =
+  let n = Rrbvec.length v in
+  for i = 0 to n - 1 do
+    f i (Rrbvec.nth v i)
+  done
+let iteri_local = Rrbvec.iteri
+
+let iter2 = Rrbvec.iter2
+
+let fold_left f acc (v : 'a t) =
+  let n = Rrbvec.length v in
+  let r = ref acc in
+  for i = 0 to n - 1 do
+    r := f !r (Rrbvec.nth v i)
+  done;
+  !r
+let fold_left_local = Rrbvec.fold_left
+
+let fold_right f (v : 'a t) acc =
+  let r = ref acc in
+  for i = Rrbvec.length v - 1 downto 0 do
+    r := f (Rrbvec.nth v i) !r
+  done;
+  !r
+let fold_right_local = Rrbvec.fold_right
+
+let foldi f acc (v : 'a t) =
+  let n = Rrbvec.length v in
+  let r = ref acc in
+  for i = 0 to n - 1 do
+    r := f !r i (Rrbvec.nth v i)
+  done;
+  !r
+
+let foldi_local (f @ local) acc (v @ local) =
   let acc' = ref acc in
   let () = Rrbvec.iteri (fun i x -> acc' := f !acc' i x) v in
   !acc'
 
 let reduce = fold_left
+let reduce_local = fold_left_local
 let reduce_kv = foldi
+let reduce_kv_local = foldi_local
 
-let reduce_r (f @ local) acc (v @ local) =
+let reduce_r f acc (v : 'a t) =
+  let exception Stop in
+  let n = Rrbvec.length v in
+  let res = ref acc in
+  (try
+     for i = 0 to n - 1 do
+       match f !res (Rrbvec.nth v i) with
+       | Reduced.Continue acc' -> res := acc'
+       | Reduced.Reduced acc' ->
+         res := acc';
+         raise Stop
+     done
+   with Stop -> ());
+  !res
+
+let reduce_r_local (f @ local) acc (v @ local) =
   let exception Stop in
   let res = ref acc in
   (try
@@ -150,18 +206,46 @@ let reduce_r (f @ local) acc (v @ local) =
    with Stop -> ());
   !res
 
-let exists = Rrbvec.exists
-let for_all = Rrbvec.for_all
-let every_ = for_all
-let some p v = Rrbvec.find_opt p v
-let not_any_ (p @ local) (v @ local) = not (exists p v)
-let not_every_ (p @ local) (v @ local) = not (for_all p v)
-let find = Rrbvec.find_opt
-let find_map = Rrbvec.find_map
+let exists p (v : 'a t) =
+  let n = Rrbvec.length v in
+  let rec go i = i < n && (p (Rrbvec.nth v i) || go (i + 1)) in
+  go 0
+let exists_local = Rrbvec.exists
 
-let map = Rrbvec.map
+let for_all p (v : 'a t) =
+  let n = Rrbvec.length v in
+  let rec go i = i >= n || (p (Rrbvec.nth v i) && go (i + 1)) in
+  go 0
+let for_all_local = Rrbvec.for_all
+
+let every_ = for_all
+let every_local = for_all_local
+let some p v = Rrbvec.find_opt p v
+let not_any_ p v = not (exists p v)
+let not_any_local (p @ local) (v @ local) = not (exists_local p v)
+let not_every_ p v = not (for_all p v)
+let not_every_local (p @ local) (v @ local) = not (for_all_local p v)
+let find = Rrbvec.find_opt
+
+let find_map f (v : 'a t) =
+  let n = Rrbvec.length v in
+  let rec go i =
+    if i >= n then None
+    else
+      match f (Rrbvec.nth v i) with
+      | Some _ as r -> r
+      | None -> go (i + 1)
+  in
+  go 0
+let find_map_local = Rrbvec.find_map
+
+let map f (v : 'a t) = Rrbvec.mapi (fun _ x -> f x) v
+let map_local = Rrbvec.map
 let mapv = map
-let mapi (f @ local) (v @ local) =
+let mapv_local = map_local
+let mapi = Rrbvec.mapi
+
+let mapi_local (f @ local) (v @ local) =
   let n = Rrbvec.length v in
   if n = 0 then Rrbvec.empty
   else begin
@@ -172,10 +256,13 @@ let mapi (f @ local) (v @ local) =
     Rrbvec.of_array a
   end
 let map_indexed = mapi
+let map_indexed_local = mapi_local
 let filter = Rrbvec.filter
 let filterv = filter
 let remove p v = Rrbvec.filter (fun x -> not (p x)) v
-let filter_map (f @ local) (v @ local) =
+let filter_map = Rrbvec.filter_map
+
+let filter_map_local (f @ local) (v @ local) =
   let n = Rrbvec.length v in
   let acc = ref Rrbvec.empty in
   for i = 0 to n - 1 do
@@ -185,6 +272,7 @@ let filter_map (f @ local) (v @ local) =
   done;
   !acc
 let keep = filter_map
+let keep_local = filter_map_local
 
 let keep_indexed f v =
   let n = Rrbvec.length v in
@@ -196,8 +284,20 @@ let keep_indexed f v =
   done;
   !acc
 
-let mapcat = Rrbvec.concat_map
+let mapcat f (v : 'a t) =
+  let n = Rrbvec.length v in
+  let acc = ref Rrbvec.empty in
+  for i = 0 to n - 1 do
+    let u = f (Rrbvec.nth v i) in
+    let m = Rrbvec.length u in
+    for j = 0 to m - 1 do
+      acc := Rrbvec.push_back !acc (Rrbvec.nth u j)
+    done
+  done;
+  !acc
+let mapcat_local = Rrbvec.concat_map
 let flat_map = mapcat
+let flat_map_local = mapcat_local
 let map2 (f @ local) (a @ local) (b @ local) =
   let n = min (Rrbvec.length a) (Rrbvec.length b) in
   if n = 0 then Rrbvec.empty
@@ -295,12 +395,24 @@ let to_list = Rrbvec.to_list
 let to_array = Rrbvec.to_array
 let into v s = Stdlib.Seq.fold_left (fun acc x -> Rrbvec.push_back acc x) v s
 
-let equal ?(eq @ local) a b =
-  let eq = match eq with Some e -> e | None -> fun (x @ local) (y @ local) -> x = y in
-  Rrbvec.equal eq a b
-let compare ?(cmp @ local) a b =
-  let cmp = match cmp with Some c -> c | None -> fun (x @ local) (y @ local) -> Stdlib.compare x y in
-  Rrbvec.compare cmp a b
+let equal ?(eq = ( = )) a b =
+  let la = Rrbvec.length a and lb = Rrbvec.length b in
+  la = lb
+  && (let rec go i =
+        i >= la || (eq (Rrbvec.nth a i) (Rrbvec.nth b i) && go (i + 1))
+      in
+      go 0)
+let compare ?(cmp = Stdlib.compare) a b =
+  let la = Rrbvec.length a and lb = Rrbvec.length b in
+  let rec go i =
+    if i >= la && i >= lb then 0
+    else if i >= la then -1
+    else if i >= lb then 1
+    else
+      let c = cmp (Rrbvec.nth a i) (Rrbvec.nth b i) in
+      if c <> 0 then c else go (i + 1)
+  in
+  go 0
 
 (* borrow variants *)
 let of_seq_local = Rrbvec.of_seq

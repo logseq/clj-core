@@ -183,70 +183,88 @@ val append : 'a t -> 'a t -> 'a t
 
 (** {1 Iteration and folding} *)
 
-val iter : ('a @ local -> unit) @ local -> 'a t @ local -> unit
+val iter : ('a -> unit) -> 'a t -> unit
+val iter_local : ('a @ local -> unit) @ local -> 'a t @ local -> unit
 (** [iter f v] applies [f] to each element in order, for effects. *)
 
-val iteri : (int -> 'a @ local -> unit) @ local -> 'a t @ local -> unit
+val iteri : (int -> 'a -> unit) -> 'a t -> unit
+val iteri_local : (int -> 'a @ local -> unit) @ local -> 'a t @ local -> unit
 (** [iteri f v] applies [f i x] to each element with its index. *)
 
 val iter2 : ('a -> 'b -> unit) -> 'a t -> 'b t -> unit
 (** [iter2 f a b] applies [f] to paired elements; raises [Invalid_argument] on
     unequal lengths. *)
 
-val fold_left : ('acc -> 'a @ local -> 'acc) -> 'acc -> 'a t @ local -> 'acc
+val fold_left : ('acc -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val fold_left_local : ('acc -> 'a @ local -> 'acc) -> 'acc -> 'a t @ local -> 'acc
 (** Left fold over [v]. *)
 
-val fold_right : ('a @ local -> 'acc -> 'acc) -> 'a t @ local -> 'acc -> 'acc
+val fold_right : ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
+val fold_right_local : ('a @ local -> 'acc -> 'acc) -> 'a t @ local -> 'acc -> 'acc
 (** Right fold over [v]. *)
 
-val foldi : ('acc -> int -> 'a @ local -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
+val foldi : ('acc -> int -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val foldi_local : ('acc -> int -> 'a @ local -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
 (** [foldi f acc v] folds [f acc i x] over each element with its index. *)
-val reduce : ('acc -> 'a @ local -> 'acc) -> 'acc -> 'a t @ local -> 'acc
+val reduce : ('acc -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val reduce_local : ('acc -> 'a @ local -> 'acc) -> 'acc -> 'a t @ local -> 'acc
 (** [reduce] is {!fold_left} — Clojure's [(reduce f init coll)]. *)
 
-val reduce_kv : ('acc -> int -> 'a @ local -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
+val reduce_kv : ('acc -> int -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val reduce_kv_local : ('acc -> int -> 'a @ local -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
 (** [reduce_kv f acc v] folds with indices — Clojure's [reduce-kv]. *)
 
-val reduce_r : ('acc -> 'a @ local -> 'acc Reduced.t) @ local -> 'acc -> 'a t @ local -> 'acc
+val reduce_r : ('acc -> 'a -> 'acc Reduced.t) -> 'acc -> 'a t -> 'acc
+val reduce_r_local : ('acc -> 'a @ local -> 'acc Reduced.t) @ local -> 'acc -> 'a t @ local -> 'acc
 (** [reduce_r f acc v] stops early when [f] returns [Reduced.reduced _]. *)
 
-val exists : ('a @ local -> bool) @ local -> 'a t @ local -> bool
+val exists : ('a -> bool) -> 'a t -> bool
+val exists_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
 (** [exists p v] is [true] when some element satisfies [p]. *)
 
-val for_all : ('a @ local -> bool) @ local -> 'a t @ local -> bool
+val for_all : ('a -> bool) -> 'a t -> bool
+val for_all_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
 (** [for_all p v] is [true] when every element satisfies [p]. *)
 
-val every_ : ('a @ local -> bool) @ local -> 'a t @ local -> bool
+val every_ : ('a -> bool) -> 'a t -> bool
+val every_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
 (** Alias for {!for_all} — Clojure's [every?]. *)
 
 val some : ('a -> bool) -> 'a t -> 'a option
 (** [some p v] is the first element satisfying [p] — like Clojure's [(some (fn
     [x] (when (p x) x)) v)]. *)
 
-val not_any_ : ('a @ local -> bool) @ local -> 'a t @ local -> bool
+val not_any_ : ('a -> bool) -> 'a t -> bool
+val not_any_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
 (** [not_any_ p v] is [not (exists p v)] — Clojure's [not-any?]. *)
 
-val not_every_ : ('a @ local -> bool) @ local -> 'a t @ local -> bool
+val not_every_ : ('a -> bool) -> 'a t -> bool
+val not_every_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
 (** [not_every_ p v] is [not (for_all p v)] — Clojure's [not-every?]. *)
 
 val find : ('a -> bool) -> 'a t -> 'a option
 (** Alias for {!some}. *)
 
-val find_map : ('a @ local -> 'b option) @ local -> 'a t @ local -> 'b option
+val find_map : ('a -> 'b option) -> 'a t -> 'b option
+val find_map_local : ('a @ local -> 'b option) @ local -> 'a t @ local -> 'b option
 (** [find_map f v] is the first [Some _] produced by [f]. *)
 
 (** {1 Transformations} *)
 
-val map : ('a @ local -> 'b) @ local -> 'a t @ local -> 'b t
+val map : ('a -> 'b) -> 'a t -> 'b t
+val map_local : ('a @ local -> 'b) @ local -> 'a t @ local -> 'b t
 (** [map f v] applies [f] to each element, eagerly returning a vector. *)
 
-val mapv : ('a @ local -> 'b) @ local -> 'a t @ local -> 'b t
+val mapv : ('a -> 'b) -> 'a t -> 'b t
+val mapv_local : ('a @ local -> 'b) @ local -> 'a t @ local -> 'b t
 (** Alias for {!map} — Clojure's [mapv]. *)
 
-val mapi : (int -> 'a @ local -> 'b) @ local -> 'a t @ local -> 'b t
+val mapi : (int -> 'a -> 'b) -> 'a t -> 'b t
+val mapi_local : (int -> 'a @ local -> 'b) @ local -> 'a t @ local -> 'b t
 (** [mapi f v] maps [f i x] over each element with its index. *)
 
-val map_indexed : (int -> 'a @ local -> 'b) @ local -> 'a t @ local -> 'b t
+val map_indexed : (int -> 'a -> 'b) -> 'a t -> 'b t
+val map_indexed_local : (int -> 'a @ local -> 'b) @ local -> 'a t @ local -> 'b t
 (** Alias for {!mapi} — Clojure's [map-indexed]. *)
 
 val filter : ('a -> bool) -> 'a t -> 'a t
@@ -260,20 +278,24 @@ val remove : ('a -> bool) -> 'a t -> 'a t
 val remove_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local
 (** [remove p v] drops elements satisfying [p] — Clojure's [remove]. *)
 
-val filter_map : ('a @ local -> 'b option) @ local -> 'a t @ local -> 'b t
+val filter_map : ('a -> 'b option) -> 'a t -> 'b t
+val filter_map_local : ('a @ local -> 'b option) @ local -> 'a t @ local -> 'b t
 (** [filter_map f v] maps [f] and drops [None] results. *)
 
-val keep : ('a @ local -> 'b option) @ local -> 'a t @ local -> 'b t
+val keep : ('a -> 'b option) -> 'a t -> 'b t
+val keep_local : ('a @ local -> 'b option) @ local -> 'a t @ local -> 'b t
 (** Alias for {!filter_map} — Clojure's [keep]. *)
 
 val keep_indexed : (int -> 'a -> 'b option) -> 'a t -> 'b t
 (** [keep_indexed f v] maps [f i x] and drops [None] results — Clojure's
     [keep-indexed]. *)
 
-val mapcat : ('a @ local -> 'b t) @ local -> 'a t @ local -> 'b t
+val mapcat : ('a -> 'b t) -> 'a t -> 'b t
+val mapcat_local : ('a @ local -> 'b t) @ local -> 'a t @ local -> 'b t
 (** [mapcat f v] maps [f] and concatenates the result vectors. *)
 
-val flat_map : ('a @ local -> 'b t) @ local -> 'a t @ local -> 'b t
+val flat_map : ('a -> 'b t) -> 'a t -> 'b t
+val flat_map_local : ('a @ local -> 'b t) @ local -> 'a t @ local -> 'b t
 (** Alias for {!mapcat}. *)
 val zip : 'a t -> 'b t -> ('a * 'b) t
 (** [zip a b] pairs elements; stops at the shorter — Clojure semantics. *)
@@ -355,10 +377,10 @@ val into : 'a t -> 'a Stdlib.Seq.t -> 'a t
 
 (** {1 Equality and comparison} *)
 
-val equal : ?eq:('a @ local -> 'a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local -> bool
+val equal : ?eq:('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 (** [equal ?eq a b] compares element-wise with [eq] (default [(=)]). *)
 
-val compare : ?cmp:('a @ local -> 'a @ local -> int) @ local -> 'a t @ local -> 'a t @ local -> int
+val compare : ?cmp:('a -> 'a -> int) -> 'a t -> 'a t -> int
 (** [compare ?cmp a b] lexicographic comparison with [cmp] (default
     [Stdlib.compare]); a shorter prefix sorts first. *)
 
