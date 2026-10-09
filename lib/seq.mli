@@ -89,12 +89,12 @@ val map2 : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
 
 (** {1 Access} *)
 
-val uncons : 'a t -> ('a * 'a t) option
+val uncons : 'a t @ local -> ('a * 'a t) option
 (** [uncons s] is [Some (x, rest)] or [None] on empty. *)
 val seq : 'a t -> 'a t option
 (** [seq s] is [None] on empty — Clojure's [seq]. *)
 
-val first : 'a t -> 'a option
+val first : 'a t @ local -> 'a option
 (** [first s] is the head, [None] on empty — Clojure's [(first s)]. *)
 val rest : 'a t -> 'a t
 (** [rest s] is the elements after the first; empty on empty. *)
@@ -102,10 +102,10 @@ val rest : 'a t -> 'a t
 val next : 'a t -> 'a t option
 (** [next s] is [rest s] as a [seq] — [None] when no elements remain. *)
 
-val second : 'a t -> 'a option
+val second : 'a t @ local -> 'a option
 (** [second s] is the second element — Clojure's [(second s)]. *)
 
-val last : 'a t -> 'a option
+val last : 'a t @ local -> 'a option
 (** [last s] is the final element (realizes the whole sequence — an infinite
     sequence diverges) — Clojure's [(last s)]. *)
 
@@ -113,10 +113,10 @@ val butlast : 'a t -> 'a t
 (** [butlast s] is [s] without the final element — lazy, Clojure's
     [butlast]. *)
 
-val nth : 'a t -> int -> 'a
+val nth : 'a t @ local -> int -> 'a
 (** [nth s i] is the element at index [i]; raises when out of bounds. *)
 
-val nth_opt : 'a t -> int -> 'a option
+val nth_opt : 'a t @ local -> int -> 'a option
 (** [nth_opt s i] is [Some (nth s i)] or [None] out of bounds. *)
 val nthrest : 'a t -> int -> 'a t
 (** [nthrest s n] drops [n] elements — Clojure's [nthrest]. *)
@@ -244,16 +244,16 @@ val reductions : ('acc -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc t
 (** [reductions f acc s] emits each intermediate accumulator —
     Clojure's [reductions]. *)
 
-val reduce : ('acc -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val reduce : ('acc -> 'a -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
 (** Left fold — Clojure's [(reduce f init coll)]. *)
 
-val fold_left : ('acc -> 'a -> 'acc) -> 'acc -> 'a t -> 'acc
+val fold_left : ('acc -> 'a -> 'acc) @ local -> 'acc -> 'a t @ local -> 'acc
 (** Alias for {!reduce}. *)
 
-val reduce_r : ('acc -> 'a -> 'acc Reduced.t) -> 'acc -> 'a t -> 'acc
+val reduce_r : ('acc -> 'a -> 'acc Reduced.t) @ local -> 'acc -> 'a t @ local -> 'acc
 (** [reduce_r f acc s] stops as soon as [f] returns [Reduced _]. *)
 
-val iter : ('a -> unit) -> 'a t -> unit
+val iter : ('a -> unit) @ local -> 'a t @ local -> unit
 (** [iter f s] applies [f] per element, for effects — realizes [s]. *)
 
 val run_ : ('a -> 'b) -> 'a t -> unit
@@ -270,32 +270,32 @@ val random_sample : ?prob:float -> ?rng:Stdlib.Random.State.t -> 'a t -> 'a t
 val replicate : int -> 'a -> 'a t
 (** [replicate n x] is [repeat ~n x] — Clojure's [replicate]. *)
 
-val every_ : ('a -> bool) -> 'a t -> bool
+val every_ : ('a -> bool) @ local -> 'a t @ local -> bool
 (** [every_ p s] is [true] when every element satisfies [p] — Clojure's
     [every?]. *)
 
-val for_all : ('a -> bool) -> 'a t -> bool
+val for_all : ('a -> bool) @ local -> 'a t @ local -> bool
 (** Alias for {!every_}. *)
 
-val some : ('a -> bool) -> 'a t -> 'a option
+val some : ('a -> bool) @ local -> 'a t @ local -> 'a option
 (** [some p s] is the first element satisfying [p]. *)
 
-val exists : ('a -> bool) -> 'a t -> bool
+val exists : ('a -> bool) @ local -> 'a t @ local -> bool
 (** [exists p s] is [true] when some element satisfies [p]. *)
 
-val not_any_ : ('a -> bool) -> 'a t -> bool
+val not_any_ : ('a -> bool) @ local -> 'a t @ local -> bool
 (** [not_any_ p s] is [not (exists p s)] — Clojure's [not-any?]. *)
 
-val not_every_ : ('a -> bool) -> 'a t -> bool
+val not_every_ : ('a -> bool) @ local -> 'a t @ local -> bool
 (** [not_every_ p s] is [not (every_ p s)] — Clojure's [not-every?]. *)
 
-val find : ('a -> bool) -> 'a t -> 'a option
+val find : ('a -> bool) @ local -> 'a t @ local -> 'a option
 (** Alias for {!some}. *)
 
-val find_map : ('a -> 'b option) -> 'a t -> 'b option
+val find_map : ('a -> 'b option) @ local -> 'a t @ local -> 'b option
 (** [find_map f s] is the first [Some _] produced by [f]. *)
 
-val mem : 'a -> 'a t -> bool
+val mem : 'a -> 'a t @ local -> bool
 (** [mem x s] is [true] when [x] occurs in [s] (structural equality). *)
 
 (** {1 Eager transforms (consume the whole sequence)} *)
@@ -336,7 +336,7 @@ val dorun : 'a t -> unit
 (** [dorun s] forces every element, discarding results — Clojure's
     [dorun]. *)
 
-val to_list : 'a t -> 'a list
+val to_list : 'a t @ local -> 'a list
 (** Alias for {!doall}. *)
 
 val to_vec : 'a t -> 'a Vec.t
@@ -368,67 +368,7 @@ val of_queue : 'a Queue.t -> 'a t
     literals and closures may flow through. Plain callers keep using the
     global versions above. *)
 
-val uncons_local : 'a t @ local -> 'a node @ local
-val cons_local : 'a @ local -> 'a t @ local -> 'a t @ local
-val singleton_local : 'a -> 'a t @ local
-val lazy_seq_local : (unit -> 'a t @ local) @ local -> 'a t @ local
 
-val of_list_local : 'a list @ local -> 'a t @ local
-val of_vec_local : 'a Vec.t @ local -> 'a t @ local
-val of_set_local : 'a Set.t @ local -> 'a t @ local
-val of_map_local : ('k, 'v) Map.t @ local -> ('k * 'v) t @ local
-val of_string_local : string @ local -> char t @ local
 
-val map_local : ('a @ local -> 'b) @ local -> 'a t @ local -> 'b t @ local
-val mapi_local : (int -> 'a @ local -> 'b) @ local -> 'a t @ local -> 'b t @ local
-val map_indexed_local : (int -> 'a @ local -> 'b) @ local -> 'a t @ local -> 'b t @ local
-val filter_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local
-val remove_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local
-val filter_map_local : ('a @ local -> 'b option) @ local -> 'a t @ local -> 'b t @ local
-val keep_local : ('a @ local -> 'b option) @ local -> 'a t @ local -> 'b t @ local
-val mapcat_local : ('a @ local -> 'b t) @ local -> 'a t @ local -> 'b t @ local
 
-val take_local : int -> 'a t @ local -> 'a t @ local
-val drop_local : int -> 'a t @ local -> 'a t @ local
-val take_while_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local
-val drop_while_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local
-val take_nth_local : int -> 'a t @ local -> 'a t @ local
-val nthrest_local : 'a t @ local -> int -> 'a t @ local
-val drop_last_local : int -> 'a t @ local -> 'a t @ local
-val rest_local : 'a t @ local -> 'a t @ local
-val next_local : 'a t @ local -> 'a t option @ local
-val interleave_local : 'a t @ local -> 'a t @ local -> 'a t @ local
-val interpose_local : 'a @ local -> 'a t @ local -> 'a t @ local
-val partition_local : int -> 'a t @ local -> 'a t t @ local
-val partition_all_local : int -> 'a t @ local -> 'a t t @ local
-val reductions_local : ('b -> 'a @ local -> 'b) @ local -> 'b -> 'a t @ local -> 'b t @ local
-val dedupe_local : 'a t @ local -> 'a t @ local
-val concat_local : 'a t t @ local -> 'a t @ local
-val iterate_local : ('a -> 'a) @ local -> 'a -> 'a t @ local
-val repeat_local : ?n:int -> 'a -> 'a t @ local
-val repeatedly_local : ?n:int -> (unit -> 'a) @ local -> 'a t @ local
-val range_local : ?start:int -> ?step:int -> int -> int t @ local
-val ints_local : ?start:int -> ?step:int -> unit -> int t @ local
 
-val to_list_local : 'a t @ local -> 'a list @ local
-val to_vec_local : 'a t @ local -> 'a Vec.t
-val count_local : 'a t @ local -> int
-val is_empty_local : 'a t @ local -> bool
-val first_local : 'a t @ local -> 'a option @ local
-val second_local : 'a t @ local -> 'a option @ local
-val last_local : 'a t @ local -> 'a option @ local
-val nth_local : 'a t @ local -> int -> 'a @ local
-val nth_opt_local : 'a t @ local -> int -> 'a option @ local
-val take_last_local : int -> 'a t @ local -> 'a list @ local
-val split_at_local : int -> 'a t @ local -> 'a t @ local * 'a t @ local
-val split_with_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a t @ local * 'a t @ local
-val reduce_local : ('b -> 'a @ local -> 'b) @ local -> 'b -> 'a t @ local -> 'b
-val fold_left_local : ('b -> 'a @ local -> 'b) @ local -> 'b -> 'a t @ local -> 'b
-val every_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
-val exists_local : ('a @ local -> bool) @ local -> 'a t @ local -> bool
-val find_local : ('a @ local -> bool) @ local -> 'a t @ local -> 'a option @ local
-val mem_local : 'a @ local -> 'a t @ local -> bool
-val iter_local : ('a @ local -> unit) @ local -> 'a t @ local -> unit
-val dorun_local : 'a t @ local -> unit
-val sort_local : ?cmp:('a @ local -> 'a @ local -> int) @ local -> 'a t @ local -> 'a t @ local
-val reverse_local : 'a t @ local -> 'a t @ local

@@ -46,7 +46,7 @@ val empty_ : 'a list -> bool
 val is_empty : 'a list -> bool
 (** Alias for {!empty_}. *)
 
-val mem : 'a -> 'a list -> bool
+val mem : 'a @ local -> 'a list @ local -> bool
 (** [mem x l] is [true] when [x] occurs in [l] (structural equality). *)
 
 (** {1 Access} *)

@@ -21,21 +21,21 @@ val empty : ?cmp:'k comparator -> unit -> ('k, 'v) t
 val singleton : ?cmp:'k comparator -> 'k -> 'v -> ('k, 'v) t
 (** [singleton ?cmp k v] is a map with one binding. *)
 
-val of_list : ?cmp:('k comparator @ local) -> ('k * 'v) list @ local -> ('k, 'v) t
+val of_list : ?cmp:'k comparator -> ('k * 'v) list -> ('k, 'v) t
 (** Later entries overwrite earlier ones, like repeated [assoc]. *)
 
-val of_array : ?cmp:('k comparator @ local) -> ('k * 'v) array @ local -> ('k, 'v) t
+val of_array : ?cmp:'k comparator -> ('k * 'v) array -> ('k, 'v) t
 (** Like {!of_list} from an array. *)
 
-val of_seq : ?cmp:('k comparator @ local) -> ('k * 'v) Stdlib.Seq.t @ local -> ('k, 'v) t
+val of_seq : ?cmp:'k comparator -> ('k * 'v) Stdlib.Seq.t -> ('k, 'v) t
 (** Like {!of_list} from a sequence. *)
 
 val sorted_map : ?cmp:'k comparator -> ('k * 'v) list -> ('k, 'v) t
 val sorted_map_by : 'k comparator -> ('k * 'v) list -> ('k, 'v) t
 (** [sorted_map_by cmp pairs] is [of_list ~cmp] — Clojure's [sorted-map-by]. *)
 
-val hash_map : ?cmp:('k comparator @ local) -> ('k * 'v) list @ local -> ('k, 'v) t
-val array_map : ?cmp:('k comparator @ local) -> ('k * 'v) list @ local -> ('k, 'v) t
+val hash_map : ?cmp:'k comparator -> ('k * 'v) list -> ('k, 'v) t
+val array_map : ?cmp:'k comparator -> ('k * 'v) list -> ('k, 'v) t
 (** [sorted_map]/[hash_map]/[array_map] are constructors for [of_list] matching
     the Clojure names. Iteration is always sorted. *)
 
@@ -45,7 +45,7 @@ val key : 'k * 'v -> 'k
 val value : 'k * 'v -> 'v
 (** [value (k, v)] is [snd] — Clojure's [(val entry)]. *)
 
-val zipmap : ?cmp:('k comparator @ local) -> 'k list @ local -> 'v list @ local -> ('k, 'v) t
+val zipmap : ?cmp:'k comparator -> 'k list -> 'v list -> ('k, 'v) t
 (** [zipmap ks vs] pairs keys with values positionally, stopping at the
     shorter input. *)
 
@@ -62,30 +62,30 @@ val empty_ : ('k, 'v) t @ local -> bool
 
 val is_empty : ('k, 'v) t @ local -> bool
 (** Alias for {!empty_}. *)
-val contains_ : ('k, 'v) t @ local -> 'k @ local -> bool
+val contains_ : ('k, 'v) t -> 'k -> bool
 (** [contains_ m k] — Clojure's [(contains? m k)]. *)
 
 (** {1 Access} *)
 
-val get : ('k, 'v) t @ local -> 'k @ local -> 'v option
+val get : ('k, 'v) t -> 'k -> 'v option
 (** [get m k] is [Some v] when [k] is bound, else [None] — Clojure's
     [(get m k)]. *)
-val get_or : 'v -> ('k, 'v) t @ local -> 'k @ local -> 'v
+val get_or : 'v -> ('k, 'v) t -> 'k -> 'v
 (** [get_or default m k] — Clojure's [(get m k default)]. *)
 
-val find : ('k, 'v) t @ local -> 'k @ local -> ('k * 'v) option
+val find : ('k, 'v) t -> 'k -> ('k * 'v) option
 (** [find m k] is the [(k, v)] entry — Clojure's [find]. *)
 
-val min_entry : ('k, 'v) t @ local -> ('k * 'v) option
+val min_entry : ('k, 'v) t -> ('k * 'v) option
 (** [min_entry m] is the entry with the smallest key, [None] on empty. *)
 
-val max_entry : ('k, 'v) t @ local -> ('k * 'v) option
+val max_entry : ('k, 'v) t -> ('k * 'v) option
 (** [max_entry m] is the entry with the largest key, [None] on empty. *)
 
-val min_key : ('k, 'v) t @ local -> 'k option
+val min_key : ('k, 'v) t -> 'k option
 (** [min_key m] is [fst] of {!min_entry}. *)
 
-val max_key : ('k, 'v) t @ local -> 'k option
+val max_key : ('k, 'v) t -> 'k option
 (** [max_key m] is [fst] of {!max_entry}. *)
 
 val keys : ('k, 'v) t -> 'k Stdlib.Seq.t
@@ -94,7 +94,7 @@ val keys : ('k, 'v) t -> 'k Stdlib.Seq.t
 val vals : ('k, 'v) t -> 'v Stdlib.Seq.t
 (** [vals m] iterates values in key order — Clojure's [(vals m)]. *)
 
-val entries : ('k, 'v) t @ local -> ('k * 'v) list
+val entries : ('k, 'v) t -> ('k * 'v) list
 (** [entries m] is the sorted entry list. *)
 
 (** {1 Update (persistent)} *)
@@ -138,11 +138,11 @@ val filter : ('k -> 'v -> bool) -> ('k, 'v) t -> ('k, 'v) t
 val remove : ('k -> 'v -> bool) -> ('k, 'v) t -> ('k, 'v) t
 (** [remove f m] drops entries where [f k v] holds — Clojure's [remove]. *)
 
-val select_keys : ('k, 'v) t @ local -> 'k list @ local -> ('k, 'v) t
+val select_keys : ('k, 'v) t -> 'k list -> ('k, 'v) t
 (** [select_keys m ks] keeps the entries whose keys occur in [ks] — Clojure's
     [select-keys]. *)
 
-val merge : ('k, 'v) t -> ('k, 'v) t @ local -> ('k, 'v) t
+val merge : ('k, 'v) t -> ('k, 'v) t -> ('k, 'v) t
 (** [merge a b] is [a] with all of [b]'s bindings; [b] wins on conflicts.
     The result uses [a]'s comparator. *)
 
@@ -150,34 +150,34 @@ val merge_with :
   ('v -> 'v -> 'v) -> ('k, 'v) t -> ('k, 'v) t -> ('k, 'v) t
 (** [merge_with f a b] combines conflicting values with [f a_v b_v]. *)
 
-val into : ('k, 'v) t -> ('k * 'v) Stdlib.Seq.t @ local -> ('k, 'v) t
+val into : ('k, 'v) t -> ('k * 'v) Stdlib.Seq.t -> ('k, 'v) t
 (** [into m entries] conjs each [(k, v)] onto [m]. *)
 
 (** {1 Iteration} *)
 
-val iter : ('k -> 'v -> unit) @ local -> ('k, 'v) t @ local -> unit
+val iter : ('k @ local -> 'v @ local -> unit) @ local -> ('k, 'v) t @ local -> unit
 (** [iter f m] applies [f k v] to each entry in key order. *)
 
-val fold : ('acc -> 'k -> 'v -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
+val fold : ('acc -> 'k @ local -> 'v @ local -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
 (** Left fold [f acc k v] over entries in key order. *)
 
-val fold_kv : ('acc -> 'k -> 'v -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
+val fold_kv : ('acc -> 'k @ local -> 'v @ local -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
 (** Alias for {!fold}. *)
 
-val reduce_kv : ('acc -> 'k -> 'v -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
+val reduce_kv : ('acc -> 'k @ local -> 'v @ local -> 'acc) @ local -> 'acc -> ('k, 'v) t @ local -> 'acc
 (** Alias for {!fold} — Clojure's [reduce-kv]. *)
 
-val every_ : ('k -> 'v -> bool) @ local -> ('k, 'v) t @ local -> bool
+val every_ : ('k @ local -> 'v @ local -> bool) @ local -> ('k, 'v) t @ local -> bool
 (** [every_ f m] is [true] when [f k v] holds for every entry — Clojure's
     [every?]. *)
 
-val some : ('k -> 'v -> bool) @ local -> ('k, 'v) t @ local -> ('k * 'v) option
+val some : ('k -> 'v -> bool) -> ('k, 'v) t -> ('k * 'v) option
 (** [some f m] is the first entry where [f k v] holds. *)
 
-val find_map : ('k -> 'v -> 'r option) @ local -> ('k, 'v) t @ local -> 'r option
+val find_map : ('k @ local -> 'v @ local -> 'r option) @ local -> ('k, 'v) t @ local -> 'r option
 (** [find_map f m] is the first [Some _] produced by [f k v]. *)
 
-val count_matching : ('k -> 'v -> bool) @ local -> ('k, 'v) t @ local -> int
+val count_matching : ('k @ local -> 'v @ local -> bool) @ local -> ('k, 'v) t @ local -> int
 (** [count_matching f m] counts entries where [f k v] holds. *)
 
 (** {1 Slices (comparator-ordered)} *)
@@ -205,6 +205,9 @@ val rseq : ('k, 'v) t -> ('k * 'v) Stdlib.Seq.t
 (** Descending order. *)
 
 val to_list : ('k, 'v) t -> ('k * 'v) list
+
+val to_list_local : ('k, 'v) t @ local -> ('k * 'v) list @ local
+(** [to_list_local] borrows [m]; the result pairs share [m]'s region. *)
 (** [to_list m] is the sorted entry list — same as {!entries}. *)
 
 val to_vec : ('k, 'v) t -> ('k * 'v) Vec.t
@@ -245,7 +248,4 @@ val equal : ?eq:('v -> 'v -> bool) -> ('k, 'v) t -> ('k, 'v) t -> bool
     comparators need not match. *)
 
 (* borrow variants *)
-val to_seq_local : ('k, 'v) t @ local -> ('k * 'v) Stdlib.Seq.t @ local
-val keys_local : ('k, 'v) t @ local -> 'k Stdlib.Seq.t @ local
-val vals_local : ('k, 'v) t @ local -> 'v Stdlib.Seq.t @ local
 

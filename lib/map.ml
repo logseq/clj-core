@@ -49,6 +49,7 @@ let keys m = Stdlib.Seq.map fst (Vec.to_seq m.entries)
 let vals m = Stdlib.Seq.map snd (Vec.to_seq m.entries)
 let entries m = Vec.to_list m.entries
 let to_list = entries
+let to_list_local (m @ local) = exclave_ (Vec.to_list_local m.entries)
 let to_seq m = Vec.to_seq m.entries
 let seq = to_seq
 let rseq m = Vec.rseq m.entries
@@ -83,12 +84,26 @@ let update_opt m k f =
   match f (get m k) with Some v -> assoc m k v | None -> dissoc m k
 
 let update_vals m f =
-  { m with entries = Vec.map (fun (k, v) -> (k, f v)) m.entries }
+  let entries = m.entries in
+  {
+    m with
+    entries =
+      Rrbvec.init (Rrbvec.length entries) (fun i ->
+          let k, v = Rrbvec.nth entries i in
+          (k, f v));
+  }
 
 let map f m = update_vals m f
 
 let map_kv f m =
-  { m with entries = Vec.map (fun (k, v) -> (k, f k v)) m.entries }
+  let entries = m.entries in
+  {
+    m with
+    entries =
+      Rrbvec.init (Rrbvec.length entries) (fun i ->
+          let k, v = Rrbvec.nth entries i in
+          (k, f k v));
+  }
 
 let of_list ?(cmp = Stdlib.compare) pairs =
   Stdlib.List.fold_left
@@ -145,14 +160,26 @@ let merge_with f a b =
     a (to_seq b)
 
 let into m s = Stdlib.Seq.fold_left conj m s
-let iter f m = Vec.iter (fun (k, v) -> f k v) m.entries
-let fold f acc m = Vec.fold_left (fun acc (k, v) -> f acc k v) acc m.entries
+let iter (f @ local) (m @ local) =
+  let () = Vec.iter (fun (k, v) -> f k v) m.entries in
+  ()
+let fold (f @ local) acc (m @ local) =
+  let acc' = ref acc in
+  let () = Vec.iter (fun (k, v) -> acc' := f !acc' k v) m.entries in
+  !acc'
 let fold_kv = fold
 let reduce_kv = fold
-let every_ f m = Vec.for_all (fun (k, v) -> f k v) m.entries
+let every_ (f @ local) (m @ local) =
+  let r = Vec.for_all (fun (k, v) -> f k v) m.entries in
+  r
 let some f m = Vec.find (fun (k, v) -> f k v) m.entries
-let find_map f m = Vec.find_map (fun (k, v) -> f k v) m.entries
-let count_matching f m = Vec.count (Vec.filter (fun (k, v) -> f k v) m.entries)
+let find_map (f @ local) (m @ local) =
+  let r = Vec.find_map (fun (k, v) -> f k v) m.entries in
+  r
+let count_matching (f @ local) (m @ local) =
+  let n = ref 0 in
+  let () = Vec.iter (fun (k, v) -> if f k v then incr n) m.entries in
+  !n
 
 let slice_bounds m from_ to_ =
   let lo = match from_ with None -> 0 | Some k -> lower_bound m k in
@@ -205,26 +232,15 @@ let rec update_in m ks f =
 
 let equal ?(eq = ( = )) a b =
   let n = count a in
-  n = count b
-  && Vec.for_all
-       (fun (k, v) ->
-         let i, found = find_index b k in
-         found && eq v (snd (Vec.nth b.entries i)))
-       a.entries
-
-(* borrow variants *)
-let to_seq_local m = Vec.to_seq_local m.entries
-let keys_local m =
-  let rec go s () =
-    match s () with
-    | Stdlib.Seq.Nil -> Stdlib.Seq.Nil
-    | Stdlib.Seq.Cons ((k, _), rest) -> Stdlib.Seq.Cons (k, go rest)
-  in
-  go (to_seq_local m)
-let vals_local m =
-  let rec go s () =
-    match s () with
-    | Stdlib.Seq.Nil -> Stdlib.Seq.Nil
-    | Stdlib.Seq.Cons ((_, v), rest) -> Stdlib.Seq.Cons (v, go rest)
-  in
-  go (to_seq_local m)
+  if n <> count b then false
+  else begin
+    let rec check i =
+      if i >= n then true
+      else begin
+        let k, v = Vec.nth a.entries i in
+        let j, found = find_index b k in
+        found && eq v (snd (Vec.nth b.entries j)) && check (i + 1)
+      end
+    in
+    check 0
+  end

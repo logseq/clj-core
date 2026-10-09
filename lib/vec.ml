@@ -127,18 +127,15 @@ let iter2 = Rrbvec.iter2
 let fold_left = Rrbvec.fold_left
 let fold_right = Rrbvec.fold_right
 
-let foldi f acc v =
-  let i = ref (-1) in
-  Rrbvec.fold_left
-    (fun acc x ->
-      incr i;
-      f acc !i x)
-    acc v
+let foldi (f @ local) acc (v @ local) =
+  let acc' = ref acc in
+  let () = Rrbvec.iteri (fun i x -> acc' := f !acc' i x) v in
+  !acc'
 
 let reduce = fold_left
 let reduce_kv = foldi
 
-let reduce_r f acc v =
+let reduce_r (f @ local) acc (v @ local) =
   let exception Stop in
   let res = ref acc in
   (try
@@ -157,36 +154,65 @@ let exists = Rrbvec.exists
 let for_all = Rrbvec.for_all
 let every_ = for_all
 let some p v = Rrbvec.find_opt p v
-let not_any_ p v = not (exists p v)
-let not_every_ p v = not (for_all p v)
+let not_any_ (p @ local) (v @ local) = not (exists p v)
+let not_every_ (p @ local) (v @ local) = not (for_all p v)
 let find = Rrbvec.find_opt
 let find_map = Rrbvec.find_map
 
 let map = Rrbvec.map
 let mapv = map
-let mapi = Rrbvec.mapi
+let mapi (f @ local) (v @ local) =
+  let n = Rrbvec.length v in
+  if n = 0 then Rrbvec.empty
+  else begin
+    let a = Array.make n (f 0 (Rrbvec.nth_local v 0)) in
+    for i = 1 to n - 1 do
+      Array.unsafe_set a i (f i (Rrbvec.nth_local v i))
+    done;
+    Rrbvec.of_array a
+  end
 let map_indexed = mapi
 let filter = Rrbvec.filter
 let filterv = filter
 let remove p v = Rrbvec.filter (fun x -> not (p x)) v
-let filter_map = Rrbvec.filter_map
+let filter_map (f @ local) (v @ local) =
+  let n = Rrbvec.length v in
+  let acc = ref Rrbvec.empty in
+  for i = 0 to n - 1 do
+    match f (Rrbvec.nth_local v i) with
+    | Some b -> acc := Rrbvec.push_back !acc b
+    | None -> ()
+  done;
+  !acc
 let keep = filter_map
 
 let keep_indexed f v =
-  snd
-    (Rrbvec.fold_left
-       (fun (i, acc) x ->
-         ( i + 1,
-           match f i x with Some y -> Rrbvec.push_back acc y | None -> acc ))
-       (0, empty) v)
+  let n = Rrbvec.length v in
+  let acc = ref Rrbvec.empty in
+  for i = 0 to n - 1 do
+    match f i (Rrbvec.nth v i) with
+    | Some b -> acc := Rrbvec.push_back !acc b
+    | None -> ()
+  done;
+  !acc
 
 let mapcat = Rrbvec.concat_map
 let flat_map = mapcat
-let map2 f a b =
+let map2 (f @ local) (a @ local) (b @ local) =
   let n = min (Rrbvec.length a) (Rrbvec.length b) in
-  Rrbvec.init n (fun i -> f (Rrbvec.nth a i) (Rrbvec.nth b i))
+  if n = 0 then Rrbvec.empty
+  else begin
+    let arr = Array.make n (f (Rrbvec.nth_local a 0) (Rrbvec.nth_local b 0)) in
+    for i = 1 to n - 1 do
+      Array.unsafe_set arr i
+        (f (Rrbvec.nth_local a i) (Rrbvec.nth_local b i))
+    done;
+    Rrbvec.of_array arr
+  end
 
-let zip a b = map2 (fun x y -> (x, y)) a b
+let zip a b =
+  let n = min (Rrbvec.length a) (Rrbvec.length b) in
+  Rrbvec.init n (fun i -> (Rrbvec.nth a i, Rrbvec.nth b i))
 let rev = Rrbvec.rev
 let reverse = rev
 
@@ -222,11 +248,15 @@ let dedupe v =
   match Rrbvec.peek_front_opt v with
   | None -> empty
   | Some first ->
-    snd
-      (Rrbvec.fold_left
-         (fun (prev, acc) x ->
-           if x = prev then (prev, acc) else (x, Rrbvec.push_back acc x))
-         (first, singleton first) v)
+    let rec loop i prev acc =
+      if i >= Rrbvec.length v then acc
+      else begin
+        let x = Rrbvec.nth v i in
+        if x = prev then loop (i + 1) prev acc
+        else loop (i + 1) x (Rrbvec.push_back acc x)
+      end
+    in
+    loop 1 first (singleton first)
 
 let split_by p v = Rrbvec.partition p v
 
@@ -265,9 +295,154 @@ let to_list = Rrbvec.to_list
 let to_array = Rrbvec.to_array
 let into v s = Stdlib.Seq.fold_left (fun acc x -> Rrbvec.push_back acc x) v s
 
-let equal ?(eq = ( = )) a b = Rrbvec.equal eq a b
-let compare ?(cmp = Stdlib.compare) a b = Rrbvec.compare cmp a b
+let equal ?(eq @ local) a b =
+  let eq = match eq with Some e -> e | None -> fun (x @ local) (y @ local) -> x = y in
+  Rrbvec.equal eq a b
+let compare ?(cmp @ local) a b =
+  let cmp = match cmp with Some c -> c | None -> fun (x @ local) (y @ local) -> Stdlib.compare x y in
+  Rrbvec.compare cmp a b
 
 (* borrow variants *)
-let to_seq_local = Rrbvec.to_seq_local
 let of_seq_local = Rrbvec.of_seq
+
+external uset_local : 'a array @ local -> int -> 'a @ local -> unit
+  = "%array_unsafe_set"
+
+(* -- Borrow twins: [@ local] inputs, results in the caller's region. -- *)
+
+let of_list_local = Rrbvec.of_list_local
+let of_array_local = Rrbvec.of_array_local
+let of_seq_local = Rrbvec.of_seq_local
+let nth_local = Rrbvec.nth_local
+let nth_opt_local = Rrbvec.nth_opt_local
+let get_local = Rrbvec.nth_opt_local
+let first_local = Rrbvec.peek_front_opt_local
+let last_local = Rrbvec.peek_back_opt_local
+let peek_local = Rrbvec.peek_back_opt_local
+let peek_front_local = Rrbvec.peek_front_opt_local
+let peek_back_local = Rrbvec.peek_back_opt_local
+let to_list_local = Rrbvec.to_list_local
+let to_array_local = Rrbvec.to_array_local
+let drop_local = Rrbvec.drop_local
+let take_local = Rrbvec.take_local
+let rest_local = Rrbvec.rest_local
+
+(* Reverse a local list into a fresh local list. *)
+let lrev (l @ local) =
+  let rec go (acc @ local) = function
+    | [] -> acc
+    | x :: t -> exclave_ (go (x :: acc) t)
+  in
+  exclave_ (go [] l)
+
+(* Length of a local list. *)
+let llength (l @ local) =
+  let rec go n = function
+    | [] -> n
+    | _ :: t -> go (n + 1) t
+  in
+  go 0 l
+
+(* Membership test on a local list (linear). *)
+let lmem (x @ local) (l @ local) =
+  let rec go (x @ local) = function
+    | [] -> false
+    | y :: t -> if x = y then true else exclave_ (go x t)
+  in
+  exclave_ (go x l)
+
+(* Filter a local list, preserving order. *)
+let lfilter (p @ local) (l @ local) =
+  let rec go (p @ local) (acc @ local) = function
+    | [] -> acc
+    | x :: t ->
+        if p x then exclave_ (go p (x :: acc) t)
+        else exclave_ (go p acc t)
+  in
+  exclave_ (lrev (go p [] l))
+
+(* Insertion sort a local list with a (possibly local) comparator. *)
+let lsort (cmp @ local) (l @ local) =
+  let rec insert (cmp @ local) (x @ local) = function
+    | [] -> exclave_ [x]
+    | y :: t ->
+        if cmp x y <= 0 then exclave_ (x :: y :: t)
+        else exclave_ (y :: insert cmp x t)
+  in
+  let rec go (cmp @ local) (acc @ local) = function
+    | [] -> acc
+    | x :: t -> exclave_ (go cmp (insert cmp x acc) t)
+  in
+  exclave_ (go cmp [] l)
+
+let filterv_local (p @ local) (v @ local) =
+  exclave_ (Rrbvec.of_list_local (lfilter p (Rrbvec.to_list_local v)))
+
+let remove_local (p @ local) (v @ local) =
+  exclave_
+    (Rrbvec.of_list_local
+       (lfilter (fun x -> not (p x)) (Rrbvec.to_list_local v)))
+
+let rev_local (v @ local) =
+  exclave_ (Rrbvec.of_list_local (lrev (Rrbvec.to_list_local v)))
+
+let reverse_local = rev_local
+
+let sort_local (v @ local) =
+  exclave_
+    (Rrbvec.of_list_local
+       (lsort (fun (a @ local) (b @ local) -> Stdlib.compare a b)
+          (Rrbvec.to_list_local v)))
+
+let sort_by_local (f @ local) (v @ local) =
+  exclave_
+    (Rrbvec.of_list_local
+       (lsort (fun (a @ local) (b @ local) -> Stdlib.compare (f a) (f b))
+          (Rrbvec.to_list_local v)))
+
+let sort_uniq_local (v @ local) =
+  let cmp = fun (a @ local) (b @ local) -> Stdlib.compare a b in
+  exclave_
+    (let sorted = lsort cmp (Rrbvec.to_list_local v) in
+     let rec dedup (cmp @ local) = function
+       | x :: (y :: _ as t) ->
+           if cmp x y = 0 then exclave_ (dedup cmp t)
+           else exclave_ (x :: dedup cmp t)
+       | l -> exclave_ l
+     in
+     Rrbvec.of_list_local (dedup cmp sorted))
+
+let shuffle_local ?(rng = Stdlib.Random.State.make_self_init ()) (v @ local) =
+  exclave_
+    (let a = Rrbvec.to_array_local v in
+     let n = Array.length a in
+     for i = n - 1 downto 1 do
+       let j = Stdlib.Random.State.int rng (i + 1) in
+       let tmp = Array.unsafe_get a i in
+       uset_local a i (Array.unsafe_get a j);
+       uset_local a j tmp
+     done;
+     Rrbvec.of_array_local a)
+
+let distinct_local (v @ local) =
+  exclave_
+    (let rec go (acc @ local) (seen @ local) (l @ local) =
+       match l with
+       | [] -> exclave_ acc
+       | x :: t ->
+           if lmem x seen then exclave_ (go acc seen t)
+           else exclave_ (go (x :: acc) (x :: seen) t)
+     in
+     Rrbvec.of_list_local (lrev (go [] [] (Rrbvec.to_list_local v))))
+
+let dedupe_local (v @ local) =
+  exclave_
+    (let rec go (acc @ local) (prev : 'a option @ local) (l @ local) =
+       match l with
+       | [] -> exclave_ acc
+       | x :: t ->
+           (match prev with
+           | Some p when p = x -> exclave_ (go acc prev t)
+           | _ -> exclave_ (go (x :: acc) (Some x) t))
+     in
+     Rrbvec.of_list_local (lrev (go [] None (Rrbvec.to_list_local v))))

@@ -2,7 +2,7 @@ module S = Stdlib.String
 
 let str ss =
   let b = Buffer.create 64 in
-  Stdlib.Seq.iter (Buffer.add_string b) ss;
+  Stdlib.Seq.iter (fun x -> Buffer.add_string b x) ss;
   Buffer.contents b
 
 let join ?(sep = "") ss =

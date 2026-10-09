@@ -9,7 +9,10 @@ let of_list = Stdlib.List.to_seq
 let of_array = Stdlib.Array.to_seq
 let of_string = Stdlib.String.to_seq
 let unfold = Stdlib.Seq.unfold
-let uncons = Stdlib.Seq.uncons
+let uncons (s @ local) =
+  match s () with
+  | Stdlib.Seq.Nil -> None
+  | Stdlib.Seq.Cons (x, xs) -> Some (x, xs)
 let lazy_seq f () = f () ()
 
 let init n f =
@@ -101,22 +104,34 @@ let first s = Option.map fst (uncons s)
 let rest s = match uncons s with Some (_, xs) -> xs | None -> empty
 
 let next s = seq (rest s)
-let second s = first (rest s)
+let second (s @ local) =
+  match uncons s with Some (_, xs) -> first xs | None -> None
 
-let rec nth_opt s n =
-  if n < 0 then None
-  else
+let nth_opt (s @ local) n =
+  let r = ref None in
+  let rec go (s @ local) i =
     match uncons s with
-    | Some (x, _) when n = 0 -> Some x
-    | Some (_, xs) -> nth_opt xs (n - 1)
-    | None -> None
+    | Some (x, xs) ->
+        if i <= 0 then r := Some x else go xs (i - 1)
+    | None -> ()
+  in
+  go s n;
+  !r
 
 let nth s n =
   match nth_opt s n with
   | Some x -> x
   | None -> invalid_arg "Clj_core.Seq.nth: index out of bounds"
 
-let last s = Stdlib.Seq.fold_left (fun _ x -> Some x) None s
+let last (s @ local) =
+  let r = ref None in
+  let rec go (s @ local) =
+    match uncons s with
+    | Some (x, xs) -> r := Some x; go xs
+    | None -> ()
+  in
+  go s;
+  !r
 
 let butlast s =
   let rec go s () =
@@ -131,9 +146,15 @@ let rec nthrest s n =
   if n <= 0 then s
   else match uncons s with Some (_, xs) -> nthrest xs (n - 1) | None -> empty
 
-let length s = Stdlib.Seq.fold_left (fun n _ -> n + 1) 0 s
+let length (s @ local) =
+  let rec go n (s @ local) =
+    match s () with
+    | Stdlib.Seq.Nil -> n
+    | Stdlib.Seq.Cons (_, xs) -> go (n + 1) xs
+  in
+  go 0 s
 let count = length
-let is_empty s = uncons s = None
+let is_empty (s @ local) = uncons s = None
 let empty_ = is_empty
 
 let map = Stdlib.Seq.map
@@ -279,42 +300,108 @@ let reductions f acc s =
   in
   go acc s
 
-let reduce = Stdlib.Seq.fold_left
-let fold_left = Stdlib.Seq.fold_left
-
-let reduce_r f acc s =
-  let rec go acc s =
-    match uncons s with
-    | Some (x, xs) -> (
-        match f acc x with
-        | Reduced.Continue acc' -> go acc' xs
-        | Reduced.Reduced acc' -> acc')
-    | None -> acc
+let reduce_r (f @ local) acc (s @ local) =
+  let r = ref acc in
+  let stop = ref false in
+  let rec go (f @ local) (s @ local) =
+    if !stop then ()
+    else
+      match uncons s with
+      | Some (x, xs) -> (
+          match f !r x with
+          | Reduced.Continue acc' -> r := acc'; exclave_ (go f xs)
+          | Reduced.Reduced acc' -> r := acc'; stop := true)
+      | None -> ()
   in
-  go acc s
+  go f s;
+  !r
 
-let iter = Stdlib.Seq.iter
-let every_ = Stdlib.Seq.for_all
-let for_all = Stdlib.Seq.for_all
 
-let rec find p s =
-  match uncons s with
-  | Some (x, xs) -> if p x then Some x else find p xs
-  | None -> None
+let reduce (f @ local) acc (s @ local) =
+  let r = ref acc in
+  let rec go (f @ local) (s @ local) =
+    match uncons s with
+    | Some (x, xs) -> r := f !r x; exclave_ (go f xs)
+    | None -> ()
+  in
+  go f s;
+  !r
+let fold_left = reduce
+
+let iter (f @ local) (s @ local) =
+  let rec go (f @ local) (s @ local) =
+    match uncons s with
+    | Some (x, xs) -> f x; exclave_ (go f xs)
+    | None -> ()
+  in
+  go f s;
+  ()
+
+let every_ (p @ local) (s @ local) =
+  let r = ref true in
+  let rec go (p @ local) (s @ local) =
+    match uncons s with
+    | Some (x, xs) -> if p x then exclave_ (go p xs) else r := false
+    | None -> ()
+  in
+  go p s;
+  !r
+let for_all = every_
+
+let find (p @ local) (s @ local) =
+  let r = ref None in
+  let rec go (p @ local) (s @ local) =
+    match uncons s with
+    | Some (x, xs) -> if p x then r := Some x else exclave_ (go p xs)
+    | None -> ()
+  in
+  go p s;
+  !r
 
 let some = find
-let exists p s = find p s <> None
-let not_any_ p s = not (Stdlib.Seq.exists p s)
-let not_every_ p s = not (for_all p s)
+let exists (p @ local) (s @ local) =
+  let r = ref false in
+  let rec go (p @ local) (s @ local) =
+    match uncons s with
+    | Some (x, xs) -> if p x then r := true else exclave_ (go p xs)
+    | None -> ()
+  in
+  go p s;
+  !r
+let not_any_ (p @ local) (s @ local) = not (exists p s)
+let not_every_ (p @ local) (s @ local) = not (for_all p s)
 
-let rec find_map f s =
-  match uncons s with
-  | Some (x, xs) -> ( match f x with Some _ as r -> r | None -> find_map f xs)
-  | None -> None
+let find_map (f @ local) (s @ local) =
+  let r = ref None in
+  let rec go (f @ local) (s @ local) =
+    match uncons s with
+    | Some (x, xs) ->
+        if Option.is_some !r then ()
+        else ( match f x with Some _ as b -> r := b | None -> exclave_ (go f xs))
+    | None -> ()
+  in
+  go f s;
+  !r
 
-let mem x s = Stdlib.Seq.exists (fun y -> y = x) s
+let mem x (s @ local) =
+  let r = ref false in
+  let rec go (s @ local) =
+    match uncons s with
+    | Some (y, xs) -> if y = x then r := true else go xs
+    | None -> ()
+  in
+  go s;
+  !r
 
-let to_list = Stdlib.List.of_seq
+let to_list (s @ local) =
+  let r = ref [] in
+  let rec go (s @ local) =
+    match uncons s with
+    | Some (x, xs) -> r := x :: !r; go xs
+    | None -> ()
+  in
+  go s;
+  Stdlib.List.rev !r
 let sort ?(cmp = Stdlib.compare) s = of_list (Stdlib.List.sort cmp (to_list s))
 
 let sort_by ?(cmp = Stdlib.compare) f s =
@@ -371,7 +458,15 @@ let sequence s = s
 let run_ f s = iter (fun x -> ignore (f x)) s
 
 let not_empty s = match s () with Nil -> None | _ -> Some s
-let bounded_count n s = Stdlib.min n (count (take n s))
+let bounded_count n (s @ local) =
+  let rec go i (s @ local) =
+    if i <= 0 then 0
+    else
+      match s () with
+      | Stdlib.Seq.Nil -> 0
+      | Stdlib.Seq.Cons (_, xs) -> 1 + go (i - 1) xs
+  in
+  Stdlib.min n (go n s)
 let nth_next s n = next (nthrest s n)
 let fnext s = Option.bind (next s) first
 let nfirst s = Option.bind (first s) next
@@ -400,286 +495,55 @@ let random_sample ?(prob = 1.0) ?(rng = Stdlib.Random.State.make_self_init ()) s
    signatures; bodies mirror the plain versions but operate directly on
    the borrowed seq so local inputs never reach a global-only function *)
 
-let uncons_local s = s ()
-let singleton_local x = fun () -> Cons (x, empty)
-let cons_local x s = fun () -> Cons (x, s)
-let lazy_seq_local f = fun () -> f () ()
 
-let rec of_list_local l () =
-  match l with [] -> Nil | x :: xs -> Cons (x, of_list_local xs)
 
-let of_vec_local v = Vec.to_seq_local v
-let of_set_local s = Set.to_seq_local s
-let of_map_local m = Map.to_seq_local m
 
-let of_string_local (s : string) : char t =
-  let n = String.length s in
-  let rec go i () =
-    if i >= n then Nil else Cons (String.unsafe_get s i, go (i + 1))
-  in
-  go 0
 
-let rec map_local f s () =
-  match s () with
-  | Nil -> Nil
-  | Cons (x, xs) -> Cons (f x, map_local f xs)
 
-let rec mapi_local f s =
-  let rec go i s () =
-    match s () with
-    | Nil -> Nil
-    | Cons (x, xs) -> Cons (f i x, go (i + 1) xs)
-  in
-  go 0 s
 
-let map_indexed_local = mapi_local
 
-let rec filter_local p s () =
-  match s () with
-  | Nil -> Nil
-  | Cons (x, xs) -> if p x then Cons (x, filter_local p xs) else filter_local p xs ()
 
-let remove_local p s = filter_local (fun x -> not (p x)) s
 
-let rec filter_map_local f s () =
-  match s () with
-  | Nil -> Nil
-  | Cons (x, xs) ->
-    (match f x with
-     | Some y -> Cons (y, filter_map_local f xs)
-     | None -> filter_map_local f xs ())
 
-let keep_local = filter_map_local
 
-let rec mapcat_local f s () =
-  match s () with
-  | Nil -> Nil
-  | Cons (x, xs) ->
-    let rec inner s' () =
-      match s' () with
-      | Nil -> mapcat_local f xs ()
-      | Cons (y, ys) -> Cons (y, inner ys)
-    in
-    inner (f x) ()
 
-let rec take_local n s () =
-  if n <= 0 then Nil
-  else
-    match s () with
-    | Cons (x, xs) -> Cons (x, take_local (n - 1) xs)
-    | Nil -> Nil
 
-let rec drop_local n s =
-  if n <= 0 then s
-  else match s () with Cons (_, xs) -> drop_local (n - 1) xs | Nil -> empty
 
-let rec take_while_local p s () =
-  match s () with
-  | Cons (x, xs) when p x -> Cons (x, take_while_local p xs)
-  | _ -> Nil
 
-let drop_while_local p s =
-  let rec go s =
-    match s () with Cons (x, xs) when p x -> go xs | _ -> s
-  in
-  go s
 
-let take_nth_local n s =
-  if n <= 0 then invalid_arg "Clj_core.Seq.take_nth_local: n must be positive";
-  filter_map_local
-    (fun (i, x) -> if i mod n = 0 then Some x else None)
-    (mapi_local (fun i x -> (i, x)) s)
 
-let rec nthrest_local s n =
-  if n <= 0 then s
-  else match s () with Cons (_, xs) -> nthrest_local xs (n - 1) | Nil -> empty
 
-let drop_last_local n s =
-  (* two passes over the realized list: the Queue-based single pass would
-     store local elements in a heap structure *)
-  let l = to_list_local s in
-  let rec len l = match l with [] -> 0 | _ :: xs -> 1 + len xs in
-  let keep = len l - n in
-  let rec go i l () =
-    match l with
-    | x :: xs when i < keep -> Cons (x, go (i + 1) xs)
-    | _ -> Nil
-  in
-  go 0 l
 
-let rest_local s = match s () with Cons (_, xs) -> xs | Nil -> empty
-let next_local s = match rest_local s with s' -> (match s' () with Nil -> None | _ -> Some s')
 
-let rec interleave_local a b () =
-  match (a (), b ()) with
-  | Cons (x, a'), Cons (y, b') -> Cons (x, cons_local y (interleave_local a' b'))
-  | _ -> Nil
 
-let rec interpose_local sep s () =
-  match s () with
-  | Cons (x, xs) ->
-    (match xs () with
-     | Cons _ -> Cons (x, cons_local sep (interpose_local sep xs))
-     | Nil -> Cons (x, empty))
-  | Nil -> Nil
 
-let partition_local n s =
-  if n <= 0 then invalid_arg "Clj_core.Seq.partition_local: n must be positive";
-  let rec go s () =
-    let chunk = to_list_local (take_local n s) in
-    if Stdlib.List.length chunk = n then
-      Cons (of_list_local chunk, go (drop_local n s))
-    else Nil
-  in
-  go s
 
-let partition_all_local n s =
-  if n <= 0 then invalid_arg "Clj_core.Seq.partition_all_local: n must be positive";
-  let rec go s () =
-    match to_list_local (take_local n s) with
-    | [] -> Nil
-    | chunk -> Cons (of_list_local chunk, go (drop_local n s))
-  in
-  go s
 
-let reductions_local f acc s =
-  let rec go acc s () =
-    Cons
-      ( acc,
-        match s () with
-        | Cons (x, xs) -> go (f acc x) xs
-        | Nil -> empty )
-  in
-  go acc s
 
-let dedupe_local s =
-  let rec go prev s () =
-    match s () with
-    | Cons (x, xs) when x <> prev -> Cons (x, go x xs)
-    | Cons (_, xs) -> go prev xs ()
-    | Nil -> Nil
-  in
-  match s () with
-  | Cons (x, xs) -> cons_local x (go x xs)
-  | Nil -> empty
 
-let concat_local ss =
-  let rec go ss () =
-    match ss () with
-    | Nil -> Nil
-    | Cons (s, rest) ->
-      let rec inner s () =
-        match s () with
-        | Nil -> go rest ()
-        | Cons (x, xs) -> Cons (x, inner xs)
-      in
-      inner s ()
-  in
-  go ss
 
-let rec iterate_local f x () = Cons (x, iterate_local f (f x))
 
-let repeat_local ?n x =
-  match n with
-  | None ->
-    let rec go () = Cons (x, go) in
-    go
-  | Some n ->
-    let rec go n () = if n <= 0 then Nil else Cons (x, go (n - 1)) in
-    go n
 
-let repeatedly_local ?n f =
-  match n with
-  | None ->
-    let rec go () = Cons (f (), go) in
-    go
-  | Some n ->
-    let rec go n () = if n <= 0 then Nil else Cons (f (), go (n - 1)) in
-    go n
 
-let range_local ?(start = 0) ?(step = 1) stop =
-  if step = 0 then invalid_arg "Clj_core.Seq.range_local: step must not be 0";
-  let rec go x () =
-    if (step > 0 && x >= stop) || (step < 0 && x <= stop) then Nil
-    else Cons (x, go (x + step))
-  in
-  go start
 
-let ints_local ?(start = 0) ?(step = 1) () =
-  let rec go x () = Cons (x, go (x + step)) in
-  go start
 
-let to_list_local s =
-  let rec go s acc =
-    match s () with Cons (x, xs) -> go xs (x :: acc) | Nil -> Stdlib.List.rev acc
-  in
-  go s []
 
-let to_vec_local s = Vec.of_seq_local s
 
-let count_local s =
-  let rec go s n = match s () with Cons (_, xs) -> go xs (n + 1) | Nil -> n in
-  go s 0
 
-let is_empty_local s = s () = Nil
 
-let first_local s = match s () with Cons (x, _) -> Some x | Nil -> None
-let second_local s =
-  match s () with Cons (_, xs) -> first_local xs | Nil -> None
 
-let last_local s =
-  let rec go s acc = match s () with Cons (x, xs) -> go xs (Some x) | Nil -> acc in
-  go s None
 
-let rec nth_opt_local s n =
-  if n < 0 then None
-  else
-    match s () with
-    | Cons (x, _) when n = 0 -> Some x
-    | Cons (_, xs) -> nth_opt_local xs (n - 1)
-    | Nil -> None
 
-let nth_local s n =
-  match nth_opt_local s n with
-  | Some x -> x
-  | None -> invalid_arg "Clj_core.Seq.nth_local: index out of bounds"
 
-let take_last_local n s =
-  let l = to_list_local s in
-  let len = Stdlib.List.length l in
-  if n >= len then l else Stdlib.List.filteri (fun i _ -> i >= len - n) l
 
-let split_at_local n s = (take_local n s, drop_local n s)
-let split_with_local p s = (take_while_local p s, drop_while_local p s)
 
-let rec reduce_local f acc s =
-  match s () with
-  | Cons (x, xs) -> reduce_local f (f acc x) xs
-  | Nil -> acc
 
-let fold_left_local = reduce_local
 
-let rec every_local p s =
-  match s () with
-  | Cons (x, xs) -> p x && every_local p xs
-  | Nil -> true
 
-let rec find_local p s =
-  match s () with
-  | Cons (x, xs) -> if p x then Some x else find_local p xs
-  | Nil -> None
 
-let exists_local p s = find_local p s <> None
-let mem_local x s = exists_local (fun y -> y = x) s
 
-let rec iter_local f s =
-  match s () with
-  | Cons (x, xs) -> f x; iter_local f xs
-  | Nil -> ()
 
-let dorun_local s = iter_local (fun _ -> ()) s
 
-let sort_local ?(cmp = Stdlib.compare) s =
-  of_list_local (Stdlib.List.sort cmp (to_list_local s))
 
-let reverse_local s = of_list_local (Stdlib.List.rev (to_list_local s))
+
+
